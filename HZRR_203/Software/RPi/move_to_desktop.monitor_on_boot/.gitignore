@@ -1,0 +1,12 @@
+.deprecated/*
+.vscode/*
+_alt/*
+Bilder/*
+guizero/
+log/plotlog/*
+log/*
+Mail/*
+verbose/*
+__pycache__/
+_tests/*
+_tests/

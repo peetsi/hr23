@@ -1,0 +1,16 @@
+{
+<<<<<<< HEAD
+    "folders": [
+        {
+            "path": "..\\..\\..\\arduino\\hzrr-200\\hzrr200_06_a"
+        }
+    ]
+=======
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {}
+>>>>>>> d23799edee1be239472f7589dd2c4a5747e3d03b
+}

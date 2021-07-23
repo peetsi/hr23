@@ -1,0 +1,50 @@
+import PySimpleGUI as sg
+
+sg.theme("DarkAmber")
+layout= [
+        [sg.Text("Module Parameters")],
+        [sg.Text("tMeas"), sg.InputText()],
+        [sg.Text("timer1Tic"), sg.InputText()],
+        [sg.OK(), sg.Cancel()],
+    ]
+
+window = sg.Window("Modul Parameter Eingebe",layout)
+
+# [variableName, actualValue, factoryResetValue, newValue, units, text, explanation ]
+'''
+[
+    variableName,
+    valMoule,
+    valStored,
+    valReset,
+    valEntered,
+    units,
+    text,
+    explanation,
+]
+'''
+["timer1Tic",]
+
+
+while True:
+    event, values = window.read()
+    print(event, values)
+    if event in (sg.WIN_CLOSED, "Cancel"):
+        break
+
+
+'''
+    "timer1Tic":      11,   # uint16_t; ms;    Interrupt heartbeat of Timer1
+    "tMeas":          61,   # uint16_t; sec;   measuring interval
+    "dtBackLight":    11,   # uint8_t;  min;   LCD time to switch off backlight
+    # characteristic curve (Kennlinie)
+    "tv0":          40.1,   # float;    degC;  calculate Ruecklauf temperature 
+    "tv1":          75.1,   # float;    degC;  from characteristic curve
+    "tr0":          32.1,   # float;    degC;  see above
+    "tr1":          46.1,   # float;    degC;
+    "tVlRxValid":     16,   # uint8_t;  min;    st.tempVlRx is valid this time;
+    # regulator 1: special Zimmer temperature if active==2:
+    "tempZiSoll":   20.1,   # float; degC;  Zimmer temp. soll; +/-4K with room Thermostat
+    "tempZiTol":     0.6,   # float;degC:  toleracne for room-temperature
+    "r":           [parReg for i in range(3)] # three sets of regulator parameters
+'''
