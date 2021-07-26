@@ -180,12 +180,12 @@ byte regler( byte reg ) {
   //     use temp. "received from master"
   //     CHANGED: otherwise use temp. "locally measured"
   //     Due to Burkhard: use 70degC
-  if( DIFF(millis(), st.tVlRxEnd) > 0 ){       // received Vorlauf Value expired:
-    //st.r[reg].tempVl = st.r[reg].tempVlMeas;   // use locally measured Vorlauf temperature
+  if( DIFF(millis(), st.tVlRxEnd) > 0 ){          // received Vorlauf Value expired:
+    //st.r[reg].tempVl = st.r[reg].tempVlMeas;    // use locally measured Vorlauf temperature
     st.r[reg].tempVl = 70.0;          // a high fixed value
   }
   else {
-    st.r[reg].tempVl = st.tempVlRx;            // use central Vorlauf temperature
+    st.r[reg].tempVl = st.tempVlRx;               // use central Vorlauf temperature
   }
 
   // *** no regulation if measured temperatures out of range (< -9.9)
@@ -222,8 +222,8 @@ byte regler( byte reg ) {
       st.r[reg].tempRlMeas= st.rTemp;
     }
     st.r[reg].tempVlLP1   = st.r[reg].tempVl;     // degC;   effective Vorlauf temperature
-    st.r[reg].tempRlLP1   = st.r[reg].tempRlMeas; // degC;   Vorlauf temp. after 1st order lowpass
-    st.r[reg].tempRlLP2   = st.r[reg].tempRlMeas; // degC;   Vorlauf temp. after 2nd order lowpass
+    st.r[reg].tempRlLP1   = st.r[reg].tempRlMeas; // degC;   Ruecklauf temp. after 1st order lowpass
+    st.r[reg].tempRlLP2   = st.r[reg].tempRlMeas; // degC;   Ruecklauf temp. after 2nd order lowpass
     st.r[reg].tempRlLP2Old= st.r[reg].tempRlMeas; // degC;   previous value to determine slope
     st.r[reg].dKSum       = 0.0;
     st.r[reg].mRl         = 0.0;

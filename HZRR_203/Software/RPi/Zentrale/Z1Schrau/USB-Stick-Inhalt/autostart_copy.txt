@@ -1,0 +1,16 @@
+[Unit]
+Description=copy files from usb
+After=local-fs.target systemd-longid.service systemd-user-sessions.service
+RequiresMountsFor=/media/pi/PYTHONUSB /var/log /var/run /var/lib /boot
+#StartLimitIntervalSec=140
+#StartLimitBurst=5
+
+[Service]
+User=root
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /media/pi/PYTHONUSB/move_to_desktop.monitor_on_boot/move_files_from_usb_and_boot_them.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
