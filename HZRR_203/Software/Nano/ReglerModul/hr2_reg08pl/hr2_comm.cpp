@@ -2,7 +2,7 @@
 /*
  * hr2_comm.cpp
  * 
- * test functions for software testing
+ * RS485 communication with Master (Zentrale) Raspberry Pi
  * 
  */
 

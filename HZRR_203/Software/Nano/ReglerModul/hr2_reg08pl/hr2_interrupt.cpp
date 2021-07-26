@@ -314,27 +314,26 @@ void lcd_light( byte onOff ) {
 
 
 // LCD Status screen
-// TODO:Adresse anzeigen
+// =================
 // sp  01234567890123456789 
 //    +--------------------+
-// z0 |A000 VL  RL 11.1 eee|
+// z0 |A00 VLZ11.1 RL V eee|
 // z1 |RR0:22.2 33.3 999mff|
 // z2 |xx1:22.2 33.3 999mff|
 // z3 |RR2:22.2 33.3 999mff|
 //    +--------------------+
 //     01234567890123456789
 //
-// A000 module address in decimal format
-// 11.1 central Vorlauf temperature if available, else "    "
+// A00  module address in decimal format
+// Z11.1 central Vorlauf temperature if available, else " ZNA"
 // xx1  e {"RR1", "ZR1"} for {Rücklauf Regler, Zimmertemp.Regler}
-// 22.2 local Vorlauf temperature, always
+// 22.2 local Vorlauf temperature, if regulator is active
 // 33.3 local Rücklauf temperature, if regulator RRx is active
 // 999  relative valve position, "  0" to "999" (in per mille)
 //      if 'motor not connected': "MNC" 
-// m    e {' ','*','o','c'} motor activity {none,to be started, open, closed}
+// m    e {'.','s','o','c'} motor activity {none,to be started, open, closed}
 // eee  module error flags (hex-bits, up to 3 nibbles, typ. )
-// fff  regulator error flags (hex-bits, up to 3 nibbles)
-// *    e {'r','z'} for mode {Rücklauf Regler, Zimmertemp.Regler}
+// ff   regulator error flags (hex-bits, up to 2 nibbles)
 void lcd_status(byte rNr){
   // rNr    regulator nr. 0,1,2, or 
   //        3  for Head-line
@@ -364,21 +363,21 @@ void lcd_status(byte rNr){
         // 'RR' and 'RZ' (Regulation Rücklauf/Zimmertemp.)
 
         // *** show motor action
-        if( st.r[rNr].motStart > 0 )    ma='*';   // marked for start
+        if( st.r[rNr].motStart > 0 )    ma='s';   // marked for start
         else if( st.motRunning == rNr ) {
           if( st.motDir == MOT_CLOSE )  ma='c';   // closing
           else                          ma='o';   // opening
         }
         else{
-                                        ma=' ';
+                                        ma='.';
         }
         
         // *** show measured VL and RL temperatures
-        if( st.r[rNr].tempVl <= 0.0 ){
+        if( st.r[rNr].tempVlMeas <= 0.0 ){
           strcpy( s0,"N.C." );
         }
         else{
-          dtostrf(st.r[rNr].tempVl,4,1,s0);
+          dtostrf(st.r[rNr].tempVlMeas,4,1,s0);
         }
         if( st.r[rNr].tempRlMeas <= 0.0 ){
           strcpy( s1,"N.C." );
@@ -415,14 +414,15 @@ void lcd_status(byte rNr){
 
     break;
     
+    // sp  01234567890123456789 
     //    +--------------------+
-    // z0 |A000 VL  RL 11.1 eee|
+    // z0 |A00 VLZ11.1 RL V eee|
     // z1 |RR0:22.2 33.3 999mff|
     // z2 |xx1:22.2 33.3 999mff|
     // z3 |RR2:22.2 33.3 999mff|
     //    +--------------------+
     //     01234567890123456789
-    
+    //
     case 3:       // write basic frame == headline
       if( DIFF(millis(), st.tVlRxEnd ) > 0 ) {
         strcpy(s0,"VLC-");
@@ -432,7 +432,8 @@ void lcd_status(byte rNr){
         sprintf(s,"%4s", s0);
       }
       //         01234567890123456789
-      sprintf(s,"A%03d VL  RL %s %3X",st.modAddr, s0, st.msg);
+      //         A12 VLZ00.0 RL V eee
+      sprintf(s,"A%02d VLZ%s RL V %03X",st.modAddr, s0, st.msg);
       //lcd.setCursor( 0, 0); lcd.print(s);
       LCDP(0,0,s);
     break;
