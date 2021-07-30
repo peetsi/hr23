@@ -331,7 +331,7 @@ void lcd_light( byte onOff ) {
 // 33.3 local Rücklauf temperature, if regulator RRx is active
 // 999  relative valve position, "  0" to "999" (in per mille)
 //      if 'motor not connected': "MNC"
-// z    e{'z','l'} for "Zentrale" or 'lokal' vor Ort gemessen 
+// z    e{'z','l','f'} for "Zentrale" or 'lokal' vor Ort gemessen  or 'fixed' (70grad)
 // m    e {'.','s','o','c'} motor activity {none,to be started, open, closed}
 // eee  module error flags (hex-bits, up to 3 nibbles, typ. )
 // ff   regulator error flags (hex-bits, up to 2 nibbles)
@@ -378,8 +378,8 @@ void lcd_status(byte rNr){
   float    tempVlRx;      // degC;  via network received central Vorlauf temperatrue
   uint32_t tVlRxEnd;      // ms;    end-time until tempVlRx is valid; use local VL values after this time
 
+        // *** Vorlauf temperature
         char marker = "-";
-
         // show zentral VL temp if valid, else show local measured value
         if( DIFF(millis(), st.tVlRxEnd) < 0 ){  // received VL temp. applicable
           dtostrf(st.tempVlRx,4,1,s0);
@@ -395,12 +395,8 @@ void lcd_status(byte rNr){
             marker='m';                         // measured VL value
           }
         }
-        if( st.r[rNr].tempVlMeas <= 0.0 ){
-          strcpy( s0,"N.C." );
-        }
-        else{
-          dtostrf(st.r[rNr].tempVlMeas,4,1,s0);
-        }
+
+        // *** Ruecklauf termperature
         if( st.r[rNr].tempRlMeas <= 0.0 ){
           strcpy( s1,"N.C." );
         }
