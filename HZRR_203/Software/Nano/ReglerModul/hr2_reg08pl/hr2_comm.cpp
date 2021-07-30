@@ -410,11 +410,6 @@ void parse_cmd(void) {
         // VE RE: Vl/Rl temp. effectively used for regulation
         // RS:    Rl temp. soll
         // PM:     Permille motor-valve setting; 0=closed, 999=open
-        // cmd = 4
-        // ER:     Error message bits set
-        // FX:    fixed position; MOT_STOP (somewhere), MOT_STARTPOS, MOT_CLOSE or MOT_OPEN
-        // MT:     total motor-on time
-        // NL:     Number of limits reached (higher load to gears)
         //           1         2         3         4         5         6  
         //  1234567890123456789012345678901234567890123456789012345678901234
         // ":00021E1b,W,VM0.0,RM0.0,VE0.0,RE0.0,RS0.0,PM0,09AB01cl0"  // could become a bit longer; OK
@@ -458,6 +453,12 @@ void parse_cmd(void) {
         send_ack();
       }
       else {
+        // cmd = 4
+        // ER:    Error message bits set
+        // FX:    fixed position; MOT_STOP (somewhere), MOT_STARTPOS, MOT_CLOSE or MOT_OPEN
+        // MT:    total motor-on time
+        // NL:    Number of limits reached (higher load to gears)
+        // NB:    Number of boots (TBD)
         //           1         2         3         4         5         6   
         //  1234567890123456789012345678901234567890123456789012345678901234
         // ":0004021b,ER111111,FX22,MT33333.33,NL44444,NB55555,06BA28cl0"

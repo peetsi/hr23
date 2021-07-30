@@ -221,6 +221,7 @@ byte regler( byte reg ) {
     if((reg==1) && st.roomReg){
       st.r[reg].tempRlMeas= st.rTemp;
     }
+    st.r[reg].season = '-';
     st.r[reg].tempVlLP1   = st.r[reg].tempVl;     // degC;   effective Vorlauf temperature
     st.r[reg].tempRlLP1   = st.r[reg].tempRlMeas; // degC;   Ruecklauf temp. after 1st order lowpass
     st.r[reg].tempRlLP2   = st.r[reg].tempRlMeas; // degC;   Ruecklauf temp. after 2nd order lowpass

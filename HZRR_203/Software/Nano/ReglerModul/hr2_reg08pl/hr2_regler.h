@@ -37,9 +37,9 @@
 // ******************************************************************************************
 // VERSIONS-Informationen - ANPASSEN !!! bei Aenderungen
 // ******************************************************************************************
-#define   FIRMWARE_NAME     "HZRR-203"
+#define   FIRMWARE_NAME     "HZRR203"
 #define   FIRMWARE_VERSION  "1.0.3"
-#define   FIRMWARE_DATE     "2021-07-22"
+#define   FIRMWARE_DATE     "2021-07-23"
 #define   HARDWARE_VERSION  "1.4"
 #define   HARDWARE_DATE     "2020-03-31"
 // ******************************************************************************************
