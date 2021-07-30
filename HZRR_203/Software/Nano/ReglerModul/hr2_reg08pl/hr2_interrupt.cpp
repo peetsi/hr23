@@ -318,9 +318,9 @@ void lcd_light( byte onOff ) {
 // sp  01234567890123456789 
 //    +--------------------+
 // z0 |A00 VLZ11.1 RL V eee|
-// z1 |RR0:22.2 33.3 999mff|
-// z2 |xx1:22.2 33.3 999mff|
-// z3 |RR2:22.2 33.3 999mff|
+// z1 |RR0:22.2z33.3 999mff|
+// z2 |xx1:22.2z33.3 999mff|
+// z3 |RR2:22.2z33.3 999mff|
 //    +--------------------+
 //     01234567890123456789
 //
@@ -330,7 +330,8 @@ void lcd_light( byte onOff ) {
 // 22.2 local Vorlauf temperature, if regulator is active
 // 33.3 local Rücklauf temperature, if regulator RRx is active
 // 999  relative valve position, "  0" to "999" (in per mille)
-//      if 'motor not connected': "MNC" 
+//      if 'motor not connected': "MNC"
+// z    e{'z','l'} for "Zentrale" or 'lokal' vor Ort gemessen 
 // m    e {'.','s','o','c'} motor activity {none,to be started, open, closed}
 // eee  module error flags (hex-bits, up to 3 nibbles, typ. )
 // ff   regulator error flags (hex-bits, up to 2 nibbles)
@@ -373,6 +374,27 @@ void lcd_status(byte rNr){
         }
         
         // *** show measured VL and RL temperatures
+
+  float    tempVlRx;      // degC;  via network received central Vorlauf temperatrue
+  uint32_t tVlRxEnd;      // ms;    end-time until tempVlRx is valid; use local VL values after this time
+
+        char marker = "-";
+
+        // show zentral VL temp if valid, else show local measured value
+        if( DIFF(millis(), st.tVlRxEnd) < 0 ){  // received VL temp. applicable
+          dtostrf(st.tempVlRx,4,1,s0);
+          marker='z';                           // value from Zentrale
+        }
+        else{                                   // nolonger valid
+          if( st.r[rNr].tempVlMeas <= 0.0 ){    // not connected
+            dtostrf(st.r[rNr].tempVl,4,1,s0);   // use effectively used temp (typ. 70deg)
+            marker='f';                         // fixed value
+          }
+          else{                                 // connected
+            dtostrf(st.r[rNr].tempVlMeas,4,1,s0);  // use measured temp.
+            marker='m';                         // measured VL value
+          }
+        }
         if( st.r[rNr].tempVlMeas <= 0.0 ){
           strcpy( s0,"N.C." );
         }
@@ -406,7 +428,7 @@ void lcd_status(byte rNr){
         }
         
         // *** build and display LCD-line
-        sprintf(s,"RR%d:%4s %4s %3s%c%2X",rNr,s0, s1, s2, ma, st.r[rNr].msg);
+        sprintf(s,"RR%d:%4s%c%4s %3s%c%2X",rNr,s0, marker, s1, s2, ma, st.r[rNr].msg);
         // *** print line to LCD
         lcd.setCursor( 0, rNr+1);      lcd.print(s);
         //LCDP(0,rNr+1,s);

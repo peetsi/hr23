@@ -308,8 +308,10 @@ def get_hostname():
             err=1
     else:
         sysinfo["hostname"] = "NOTDEF"
+        sysinfo["hostname"] = "Z1Schrau"  # TODO remove, only for debugging
         err=2
-    return err
+    return err,sysinfo["hostname"]
+
 
 def set_sysinfo():
     sysinfo["hostname"] = get_hostname()

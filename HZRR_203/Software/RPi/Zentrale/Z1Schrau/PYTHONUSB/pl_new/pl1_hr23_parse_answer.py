@@ -17,6 +17,7 @@ def parse_answer(rxCmd):
     global rxd
     err=0
 
+    #print("parse_answer(): rxCmd=",rxCmd)
     # *** remove checksums
     err,rxCmdU = mb.modbus_unwrap(rxCmd)
     #print("err=",err,"; rxCmdU=",rxCmdU)
@@ -53,7 +54,7 @@ def parse_answer(rxCmd):
             # parse a line e.g.:
             // no winter- or summer operation -> omitted in type b protocol
             // cmd = 2
-            // SN:    season, typical S or W; maybe something else
+            // SN:    season, typical S or W; maybe something else e.g. empty like ",,"
             // VM RM: Vl/Rl temp. measured
             // VE RE: Vl/Rl temp. effectively used for regulation
             // RS:    Rl temp. soll
@@ -71,12 +72,12 @@ def parse_answer(rxCmd):
             
             '''
             l = pyld.strip().split(",")
-            while(l[0]==''):            # remove leading empty items
-                l.pop(0)
+            #while(l[0]==''):            # remove leading empty items
+            #    l.pop(0) # do not remove
             rst["tic2"] = time.time()
             pos=0
             
-            print("l=",l)
+            #print("l=",l)
             
             try:
                 rst["SN"] = l[pos+0]

@@ -31,9 +31,10 @@ sp = None   # will be defined in ser_instatnce()
 # *** handle of serial RS485 USB-Interface
 ser= None   # will be assigned in ser_instance()
 
-def ser_instantce() :
+
+def sp_init():
     global sp
-    global ser
+
     err=0
     configFile='config/pl1_hr23_config.ini'
     try:
@@ -53,6 +54,14 @@ def ser_instantce() :
         err=1
         print("error reading/assigning configuration from %s: "%(configFile),end="")
         print(e)
+    return err
+
+
+def ser_instantce() :
+    global sp
+    global ser
+    err=0
+    err=sp_init()
     if not err:
         sp["port"] = sp['portRPi4']   # TODO change to automatic selection
 
