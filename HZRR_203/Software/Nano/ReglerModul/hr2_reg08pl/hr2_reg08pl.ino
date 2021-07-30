@@ -14,7 +14,7 @@ date       version   author(s)     change
 // *********************************************************
 // TimerOne.h               (Tools -> Manage Libraries ...)
 // LiquidCrystal_I2C.h      (Tools -> Manage Libraries ...)
-//                (LiquidCrystel I2C by Frank de Brabander)
+//                (LiquidCrystal I2C by Frank de Brabander)
 // DallasTemperature.h      (Tools -> Manage Libraries ...)
 // OneWire.h              (installs with DallasTemperature)
 
@@ -221,7 +221,7 @@ byte regler( byte reg ) {
     if((reg==1) && st.roomReg){
       st.r[reg].tempRlMeas= st.rTemp;
     }
-    st.r[reg].season = '-';
+    st.r[reg].season      = 'N';
     st.r[reg].tempVlLP1   = st.r[reg].tempVl;     // degC;   effective Vorlauf temperature
     st.r[reg].tempRlLP1   = st.r[reg].tempRlMeas; // degC;   Ruecklauf temp. after 1st order lowpass
     st.r[reg].tempRlLP2   = st.r[reg].tempRlMeas; // degC;   Ruecklauf temp. after 2nd order lowpass
@@ -254,6 +254,7 @@ byte regler( byte reg ) {
     //SPR(F(" VlLP1="),st.r[reg].tempVlLP1);
     //SPR(F(" tempRlLP1="),st.r[reg].tempRlLP1);
     //SPR(F(" tempRlLP2="),st.r[reg].tempRlLP2);
+    st.r[reg].season = 'X';
     // *** Vorlauf temperature too low: Summer operation - no regulation
     if( st.r[reg].tempVlLP1 < par.tv0 - 5.0 ) {
       st.r[reg].season = 'S';
@@ -551,7 +552,9 @@ void setup() {
 
   // *** real-environment tests:
   //show_param();
-
+    st.r[0].season = 'x';
+    st.r[1].season = 'x';
+    st.r[2].season = 'x';
 }
 
 
