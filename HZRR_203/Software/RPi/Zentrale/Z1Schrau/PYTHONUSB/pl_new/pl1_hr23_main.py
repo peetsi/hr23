@@ -22,31 +22,138 @@ def send_temp_vorlauf( vlmodules, modZentrale ):
     ''' @brief  send Vorlauftemperature to modules'''
     us.ser_check()
     # 1. read VL temperature from Zentrale module
-    txCmd = mb.modbus_wrap(modZentrale, 0x02, 0, "" ) # request status part 1
+    txCmd = mb.modbus_wrap(modZentrale, 0x02, 1, "" ) # request status part 1
     err,repeat,rxCmd=us.net_dialog(txCmd)
-    #vlt = 
-    pass
+    vlt = rst["VM"]
+    print("setze Vorlauftemperatur von Zentrale: %5.1fdegC:"%(vlt))
+    for mod in vlmodules:
+        print(" %2d"%(mod),end="")
+        txCmd = mb.modbus_wrap(mod,0x20,0,",%.1f,"%(vlt))
+        #print(" txCmd=",txCmd)
+
+        err,repeat,rxCmd=us.net_dialog(txCmd)
+        if err:
+            #print(e,end="")
+            print(":",end="")
+        else:
+            print(".",end="")
+        #print("rxCmd=",rxCmd)
+    print("fertig")
+
 
 def show_mod_status(modules,regulators,mode=0):
     ''' read status information from modules and regualtors and display them'''
     us.ser_check()
-    print("Mod Reg     VL   RL   Mot")
-    print(" nr  nr   degC degC pmill")
-    for mod in modules:
-        for reg in regulators:
-            txCmd = mb.modbus_wrap( mod, 0x02, reg,"" ) # staus part 1
+    print(60*"=")
+    print("Mod Reg     VL  VLeff     RL  RLeff   Mot")
+    print(" nr  nr   degC   degC   degC   degC   pmill")
+    print(60*"-")
+    for modAdr in modules:
+        mod = modules.index(modAdr)
+        for reg in regSel:
+            txCmd = mb.modbus_wrap( modAdr, 0x02, reg,"" ) # staus part 1
             err,repeat,rxCmd=us.net_dialog(txCmd)
             time.sleep(0.1)
 
-            txCmd = mb.modbus_wrap( mod, 0x04, reg,"" ) # staus part 2
+            txCmd = mb.modbus_wrap( modAdr, 0x04, reg,"" ) # staus part 2
             #err,repeat,rxCmd=us.net_dialog(txCmd)
             time.sleep(0.1)
             
             if mode==0:
                 print(rst)
             if mode==1:
-                print(" %2d   %1d % 6.1f % 6.1f %3d"%\
-                      (mod,reg,rst["VM"],rst["RM"],rst["PM"],)) 
+                s1 = " %2d   %1d "%(modAdr,reg)
+
+                VLmess=rst["VM"]
+                if VLmess==-127.0:
+                    s2=" Fehlt"
+                else:
+                    s2="% 6.1f"%(VLmess)
+
+                s3="% 6.1f"%(rst["VE"])
+
+                RLmess=rst["RM"]
+                if RLmess==-127.0:
+                    s4=" Fehlt"
+                else:
+                    s4="% 6.1f"%(RLmess)
+
+                s5="% 6.1f"%(rst["RE"])
+                s6="   %3d"%(rst["PM"])
+
+                sg=s1+s2+s3+s4+s5+s6
+                print(sg)
+
+                #print(" %2d   %1d % 6.1f % 6.1f % 6.1f % 6.1f   %3d"%\
+                #        (modAdr,reg,rst["VM"],rst["VE"],rst["RM"],rst["RE"],rst["PM"],)) 
+
+
+
+
+
+modules=[]
+modSel = [1]
+regSel = [1]
+
+def menu(mpos):
+    global modules
+    global modSel
+    global regSel
+    wahl=-1
+    while wahl not in mpos:
+        print()
+        print(60*"=")
+        print("0  Ende des Programms")
+        print("1  Zeige Daten ausgewählter Module u. Regler",modSel)
+        print("2  Zeige Daten aller Module u. ausgewaehlter Regler:")
+        print("     ",modules)
+        print("3  setze Modul Auswahl",modSel)
+        print("4  setze Regler Auswahl",regSel)
+        print("5  Sende Vorlauftemperatur von Modul 30 an alle anderen")
+        wahl=int(input("wahl="))
+    return wahl
+
+
+
+def mod_list_interactive(lsel,lrange ):
+    lsel.sort()
+    lrange.sort()
+    end=False
+    while not end:
+        print("Liste der Module auswählen; nur Module aus der Liste verwenden:")
+        print(lrange)
+        print("gewaehlte Module:",lsel)
+        a=input("+<nr> zufuegen, -<nr> entfernen, E Ende -> ")
+        print()
+        if a=="E":
+            end=True
+        if len(a)<2:
+            print("Falsche Eingabe - nochmal:")
+        else:
+            op=a[0]
+            if op not in ["+","-"]:
+                print("falscher Operator, verwende +/-")
+            else:
+                try:
+                    nr=int(a[1:])
+                except Exception as e:
+                    print("Falsche Eingabe; ",e)
+                else:
+                    if nr not in lrange:
+                        print("Zahl ist nicht in der Liste")
+                    else:
+                        if op=='+' and nr not in lsel:
+                            lsel.append(nr)
+                            lsel.sort()
+                        elif op=='-' and nr in lsel:
+                            lsel.remove(nr)
+                            lsel.sort()
+
+
+
+
+def select_regulators():
+    global regSel
 
 
 def inbetriebnahme():
@@ -56,6 +163,10 @@ def inbetriebnahme():
         - Senden der zentralen Vorlauftemperatur
     '''
     global hk
+    global modules
+    global modSel
+    global regSel
+
     # *** Inlesen der Heizkreisparameter
     us.ser_check()
 
@@ -95,15 +206,22 @@ def inbetriebnahme():
     busy=True
     while busy:
         # *** forever until restart / watchdog (if implemented)
+        wahl=menu([0,1,2,3,4,5])
+        if wahl==1: # show selected modules
+            show_mod_status(modSel,regSel,1)               
+        if wahl==2: # show all modules
+            show_mod_status(modules,regSel,1)
+        if wahl==3: # select modules
+            mod_list_interactive(modSel,modules)
+        if wahl==4: # select regulators
+            mod_list_interactive(regSel,[1,2,3])
+        if wahl==5: # send VL temp to modules
+            send_temp_vorlauf(modSendTvor,30)   # from module 30
 
-        # *** 1. read all values and display them
-        show_mod_status(modules,regActive,1)               
+        if wahl==0:
+            # stop loop
+            busy=False
 
-        # *** 2. if interval is ready: send VL temp to modules
-        if time.time() > tNextTvor:
-            pass
-        
-        busy=False
 
 
 
@@ -128,15 +246,13 @@ if __name__ == "__main__":
     prog_header()
     platform_check()
     
-    send_temp_vorlauf(1,30)
 
-    #inbetriebnahme()
-    '''
-    modules= [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]
-    #
+    inbetriebnahme()
+    # tests:
+    #modules= [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]
     # modules=[1,]
-    regulators = [1]
-    show_mod_status(modules,regulators,1)
-    '''
-
+    #regulators = [1]
+    #send_temp_vorlauf([1,2,3,4,5,6,7,8,9],30)
+    #show_mod_status(modules,regulators,1)
+    
 

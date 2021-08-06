@@ -39,7 +39,7 @@ def parse_answer(rxCmd):
 
     if rxCmdNr == 1 :  # ping command
         if "ACK" in pyld :
-            return 0,"ACK"
+            return 0,pyld
 
     elif rxCmdNr == 2 :  # read status values part 1
         if rxSubAdr == 0 :
@@ -48,7 +48,7 @@ def parse_answer(rxCmd):
         elif rxSubAdr in [1,2,3]:
             # "ACK" - no data received
             if "ACK" in pyld :
-                return 0,"ACK"
+                return 0,pyld
 
             '''
             # parse a line e.g.:
@@ -129,7 +129,7 @@ def parse_answer(rxCmd):
             except Exception as e:
                 return 62,"other error"+str(e)
             
-            return 0,"ACK"
+            return 0,pyld
 
 
 
@@ -181,7 +181,14 @@ def parse_answer(rxCmd):
                 return 1,"parsing error: "+str(e)
             except Exception as e:
                 return 2,"other error: "+str(e) 
-            return 0,"ACK"
+            return 0,pyld
+
+    elif rxCmdNr == 0x20 :  # Zentrale Vorlauftemperatur received
+        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
+        if "ACK" in pyld :
+            return 0,pyld
+
+
 
     '''
     elif rxCmdNr == 5:  # read parameter: module / reg.part 1
@@ -271,15 +278,9 @@ def parse_answer(rxCmd):
 
     elif rxCmdNr == 9:   # revision numbers of module 
         print(rxCmd)
+    '''
 
-
-    elif rxCmdNr == 0x20 :  # Zentrale Vorlauftemperatur received
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
-        if "ACK" in pyld :
-            pa_to_ser_obj.add('zentrale_vorlauftemp->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
-
-
+    '''
     elif rxCmdNr == 0x22 :  # setze parameter
         #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :

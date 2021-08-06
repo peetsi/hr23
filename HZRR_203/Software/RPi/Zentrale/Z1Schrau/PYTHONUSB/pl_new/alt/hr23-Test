@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=hr23-USB
+# from USB-Stick not possible - is mounted no-exec !
+Path=/media/pi/PYTHONUSB/pl_new
+Exec=/media/pi/PYTHONUSB/pl_new/pl1_hr23_main.py
+Icon=/media/pi/PYTHONUSB/pl_new/cent.png
+StartupNotify=false
+Terminal=true

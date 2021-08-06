@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=hr23-Pi
+# from Desktop/Monitor
+Exec=/home/pi/Desktop/Monitor/PYTHONUSB/pl_new/pl1_hr23_main.py
+Icon=/home/pi/Desktop/Monitor/PYTHONUSB/pl_new/cent.png
+
+# from PYTHONUSB USB-Stick
+#Exec=/usr/bin/Python3 /usr/bin/Python3/media/pi/PYTHONUSB/pl_new/pl1_hr23_main.py
+#Icon=/usr/bin/Python3/media/pi/PYTHONUSB/pl_new/cent.png
+
+StartupNotify=false
+Terminal=true
+X-KeepTerminal=true
+Path=/home/pi/Desktop/Monitor/PYTHONUSB/pl_new/
