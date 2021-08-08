@@ -107,14 +107,14 @@ rst = {
 
 # module status data for one module including 3 regulators
 stat = {
-    "rxMs"      :  0,   # msec;     received timestamp from module  
+    "rxMs"      :  0,   # msec; received timestamp from module  
     "MotConn"   :  0,   # 1     motor connected -> 1
     "MotImA"    :  0,   # mA;   last measured motor current 
     "jumpers"   :  0,   # 1     jumper settings
     "r" : [ rst for i in range(3) ], # status of 3 built-in regulators
 }
 
-stats = [stat for i in range(31)]
+stats = [stat for i in range(31)]   # index 0 is unused -> index = module number
 
 ''' 
 ******************
@@ -299,9 +299,10 @@ def get_hostname():
     err=0
     if platform.system() == "Linux":
         try:
-            fin = open("/etc/hostname","r")
-            sysinfo["hostname"] = fin.read().strip()
-            fin.close()
+            with open("/etc/hostname","r") as fin:
+                #fin = open("/etc/hostname","r")
+                sysinfo["hostname"] = fin.read().strip()
+                #fin.close()
         except Exception as e:
             print("ERR reading hostname; ",e)
             sysinfo["hostname"] = "NOTDEF"
@@ -373,16 +374,20 @@ def platform_check():
 
 
 
-def prog_header_var():
-    print()
-    cmdLine=sys.argv
-    progPathName = sys.argv[0]
-    progFileName = progPathName.split("/")[-1]
-    print(60*"=")
-    print("ZENTRALE: %s"%(progFileName))
-    print(60*"-")
-
 if __name__ == "__main__":
+
+    def prog_header_var():
+        print()
+        cmdLine=sys.argv
+        progPathName = sys.argv[0]
+        progFileName = progPathName.split("/")[-1]
+        print(60*"=")
+        print("ZENTRALE: %s"%(progFileName))
+        print(60*"-")
+
+
+
+
     prog_header_var()   # test ok
     #platform_check()    # test ok
     #param_list(1)       # test ok

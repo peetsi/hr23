@@ -5,11 +5,26 @@ from pl1_hr23_variables import *
 import pl1_modbus_c as mb
 import time
 
+'''
+# % % '%%' run cell
+print("hello")
+#
+''' 
+def parStr2list(pyld):
+    # split ',' separated values from st.rxCmd in list 
+    if (pyld == ""):
+        return 1,[]
+    pl = pyld.rxCmd.split(",")
+    while pl[0] == '' :      # discard leading empty strings
+        pl.pop(0)
+    while pl[-1] == '' :     # discard trailing empty strings
+        pl.pop()
+    return 0,pl
 
 
-def parse_answer(rxCmd):
+def parse_answer(rxCmdStr):
     ''' @brief  analyze STRING rxCmd and perform required action
-        @param  rxCmd   received command-string of type 'str'
+        @param  rxCmdStr   received command-string of type 'str'
         @return err     error number
         @return parse   parsed data
         @retrun rxd     global structure with header and payload data
@@ -17,9 +32,9 @@ def parse_answer(rxCmd):
     global rxd
     err=0
 
-    #print("parse_answer(): rxCmd=",rxCmd)
+    #print("parse_answer(): rxCmd=",rxCmdStr)
     # *** remove checksums
-    err,rxCmdU = mb.modbus_unwrap(rxCmd)
+    err,rxCmdU = mb.modbus_unwrap(rxCmdStr)
     #print("err=",err,"; rxCmdU=",rxCmdU)
     if err != 0:
         return err, "err unwrapping received command: "+str(err)
@@ -132,11 +147,6 @@ def parse_answer(rxCmd):
             return 0,pyld
 
 
-
-
-
-
-
     # command 3 not implemented in rev hr2 (was in hr010)
     # sends regulator parameter -> new command
 
@@ -183,231 +193,226 @@ def parse_answer(rxCmd):
                 return 2,"other error: "+str(e) 
             return 0,pyld
 
-    elif rxCmdNr == 0x20 :  # Zentrale Vorlauftemperatur received
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
-        if "ACK" in pyld :
-            return 0,pyld
-
-
-
-    '''
     elif rxCmdNr == 5:  # read parameter: module / reg.part 1
-        #timer1Tic,tMeas,dtBackLight,tv0,tv1,tr0,tr1,
-        #tVlRxValid,tempZiSoll,tempTolRoom
-        l = get_command_list()
-        par = parameters[modAdr-1]
+        # make a parameter-list from received string
+        err,pl=parStr2list(pyld)
+        if err:
+            return -2,pyld
+
+        par = pars[modAdr]      # NOTE inex 0 is not used -> modAdr is actual Index
         if rxSubAdr == 0:
-            # read timer1Tic,tMeas,dtBackLight,
+            # set values from received string:
+            # timer1Tic,tMeas,dtBackLight,
             #   tv0,tv1,tr0,tr1,tVlRxValid,tempZiSoll,tempZiToly
             for n in par:
                 if n == "r":
-                    break # last value terminated in dict
-                par[n]=float(l.pop(0))
-            pa_to_ser_obj.add('READ_PARAM->par = parameters[modAdr-1]: %s'%(str(par)))
-            return True
+                    break # last value, contains regulator parameters - see below
+                par[n]=float(pl.pop(0))
+            return 0,pyld
 
         elif rxSubAdr in [1,2,3]:
-            # read:
-            #   active, motIMin, motIMax, tMotDelay, tMotMin, tMotMax,
+            # set values from received string:
+            # active, motIMin, motIMax, tMotDelay, tMotMin, tMotMax,
             #   dtOpen, dtClose, dtOffset
             pr = par["r"][rxSubAdr-1]
             start=False
-            for n in pr:          # start at begin of directory
-                pr[n]=float(l.pop(0))
-                if l == []:     # last item provided
+            for n in pr:         # start at begin of directory
+                pr[n]=float(pl.pop(0))
+                if pl == []:     # last item provided
                     break
-            pa_to_ser_obj.add('READ_PARAM->pr = par["r"][rxSubAdr-1]: %s'%(str(pr)))
-            return True
+            return 0,pyld
 
     elif rxCmdNr == 6:  # read parameter: module / reg.part 2
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if rxSubAdr == 0:
             # "ACK" - no data available
             if "ACK" in pyld :
-                pa_to_ser_obj.add('READ_PARAM-ACK (rxSubAdr == 0)')
-                return True
+                return 0,pyld
 
         elif rxSubAdr in [1,2,3]:
             # "tMotTotal" and "nMotLimit" are not transferred here
             # they are received with command nr. 4 as "MT" and "NL"
-            # read:
+            # set values from received string:
             #   pFakt, iFakt, dFakt, tauTempVl, tauTempRl, tauM
-            l = get_command_list()
-            par = parameters[modAdr-1]
+            err,pl=parStr2list(pyld)
+            par = pars[modAdr]      # NOTE inex 0 is not used -> modAdr is actual Index
             pr = par["r"][rxSubAdr-1]
-
+            # fill in from a certain parameter on:
             start=False
             for n in pr:
                 if n == "pFakt":  # first item to be filled
                     start=True
                 if start :
-                    pr[n]=float(l.pop(0))
-                    if l == []:     # last item provided
+                    pr[n]=float(pl.pop(0))
+                    if pl == []:     # last item provided
                         break
-            pa_to_ser_obj.add('READ_PARAM->pr = par["r"][rxSubAdr-1]: %s'%(str(pr)))
-            return True
-            #pr = parameters[modAdr-1]["r"][rxSubAdr-1][n] = number
-
+            return 0,pyld
 
     elif rxCmdNr == 7:  # read parameter: module / reg.part 3
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if rxSubAdr == 0:
             # "ACK" - no data available
             if "ACK" in pyld :
-                pa_to_ser_obj.add('READ_PARAM-ACK (rxSubAdr == 0)')
-                return True
+                return 0,pyld
 
         elif rxSubAdr in [1,2,3]:
-            # read:
+            # set values from received string:
             #   m2hi, m2lo,
             #   tMotPause, tMotBoost, dtMotBoost, dtMotBoostBack
-            l = get_command_list()
-            par = parameters[modAdr-1]
+            err,pl=parStr2list(pyld)
+            par = pars[modAdr]      # NOTE inex 0 is not used -> modAdr is actual Index
             pr = par["r"][rxSubAdr-1]
+            # fill in from a certain parameter on:
             start = False
             for n in pr:
                 if n == "m2hi":  # first item to be filled
                     start=True
                 if start :
-                    pr[n]=float(l.pop(0))
-                    if l == []:     # last item provided
+                    pr[n]=float(pl.pop(0))
+                    if pl == []:     # last item provided
                         break
-            #parameter = parameters[modAdr-1]
-            pa_to_ser_obj.add('READ_PARAM->pr = par["r"][rxSubAdr-1]: %s'%(str(pr)))
-            return True
+            return 0,pyld
 
     elif rxCmdNr == 9:   # revision numbers of module 
-        print(rxCmd)
-    '''
+        return 0,pyld    # TODO: check, separate data, add to _variables.py
 
-    '''
-    elif rxCmdNr == 0x22 :  # setze parameter
+
+    elif rxCmdNr == 0x20 :  # Zentrale Vorlauftemperatur received
         #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('set_param(0x22)->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
+
+
+
+    elif rxCmdNr == 0x22 :  # setze parameter
+        if "ACK" in pyld :
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x23 :  # setze parameter
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('set_param(0x23)->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
 
     elif rxCmdNr == 0x24 :  # setze parameter
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('set_param(0x24)->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x25 :  # set special parameters
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('set_special_param->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x30 :  # reset all parameters to factory settings
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('factory_reset->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x31 :  # move valve; time and direction
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('move_valve->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x34 :  # set normal operation
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('set_normal_operation->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x35 :  # set regulator active/inactive
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('reg_set->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x36 :  # fast mode on/off
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('fast_mode->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
-
-    elif rxCmdNr == 0x37 :  # get milliseconds
-        l = get_command_list()
-        rxMillis = l[0]
-        #dbg.m("COMMAND= %02x: rxCmd= %s"%(rxCmdNr,rxCmd),"/ l=",str(l),"/ recv milliseconds:",rxMillis)
-        pa_to_ser_obj.add('get_millis->ACK: %s,%s,%s'%(str(rxCmdNr),str(rxCmd),str(rxMillis)))
-        return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
+ 
+    elif rxCmdNr == 0x37 :  # get milliseconds timer-tic of module
+        err,pl=parStr2list(pyld)
+        if err:
+            return -1,pyld
+        rxMillis = float(pl[0])
+        stat["rxMs"]=rxMillis
+        return 0,pyld
 
     elif rxCmdNr == 0x38 :  # copy all parameters from EEPROM to RAM
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('cpy_eep2ram->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x39 :  # write all parameters from RAM to EEPROM
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('cpy_ram2eep->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x3A :  # RESET using watchdog - endless loop
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('watchdog_reset->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
-    elif rxCmdNr == 0x3B :  # clear eeprom  ??? plpl test eeprom if ram space is left
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
+    elif rxCmdNr == 0x3B :  # clear eeprom
         if "ACK" in pyld :
-            pa_to_ser_obj.add('clear_eep->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x3C :  # check if motor connected
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
-        l = get_command_list()
-        #dbg.m("0x3C: l=",l)
+        err,pl=parStr2list(pyld)
+        if err:
+            return -1,pyld
         rxMotConn = int(l[0])
-        #dbg.m("received motor connected:",rxMotConn)
-        pa_to_ser_obj.add('motor_connected->ACK: mot_connected:%s (%s,%s)'%(str(rxMotConn),str(rxCmdNr),str(rxCmd)))
-        return True
+        stat["MotConn"]=rxMotConn
+        return 0,pyld
 
     elif rxCmdNr == 0x3D :  # open and close valve to store times
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('open_close_valve->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x3E :  # switch off current motor
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('mot_off->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x3F :  # read motor current
-        l = get_command_list()
-        rxMotImA = float(l[0])
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd),"// l=",l,"// received mA:",rxMotImA)
-        pa_to_ser_obj.add('mot_current->ACK: %s (%s,%s)'%(str(rxMotImA),str(rxCmdNr),str(rxCmd)))
-        return True
+        err,pl=parStr2list(pyld)
+        if err:
+            return -1,pyld
+        rxMotImA = float(pl[0])
+        stat["MotImA"] = rxMotImA 
+        return 0,pyld
 
     elif rxCmdNr == 0x40 :  # LCD-light on/off
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
         if "ACK" in pyld :
-            pa_to_ser_obj.add('lcd_backlight->ACK: %s,%s'%(str(rxCmdNr),str(rxCmd)))
-            return True
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
 
     elif rxCmdNr == 0x41 :  # read jumper settings
-        l = get_command_list()
+        err,pl=parStr2list(pyld)
+        if err:
+            return -1,pyld
         jumpers = int(l[0], 16)
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd),"// jumper setting = %02x:"%(jumpers))
-        pa_to_ser_obj.add('get_jumpers->ACK: %s (%s,%s)'%(str(jumpers),str(rxCmdNr),str(rxCmd)))
-        return True
-    '''
+        stat["jumpers"] = jumpers
+        return 0,pyld
+
     return -1,"function number not available: "+str(rxCmdNr) # values not found while parsing
 
 
@@ -418,10 +423,12 @@ def parse_answer(rxCmd):
 # ----- test -----
 # ----------------
 
+
 if __name__ == "__main__" :
 
    # Test functions, Tests
-    
+
+
     def prog_header_var():
         print()
         cmdLine=sys.argv
@@ -430,8 +437,11 @@ if __name__ == "__main__" :
         print(60*"=")
         print("ZENTRALE: %s"%(progFileName))
         print(60*"-")
+    
 
     prog_header_var()
     # usage examples
 
     # example 1
+
+

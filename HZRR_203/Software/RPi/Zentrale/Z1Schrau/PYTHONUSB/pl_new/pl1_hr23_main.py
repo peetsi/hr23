@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# TODO: command 9:  check, separate data, add to _variables.py
+
 import platform
 import sys
 import time
 import configparser
-
-
+#
 from pl1_hr23_variables import *
 import vorlaut as vor
 import pl1_hr23_parse_answer as par
