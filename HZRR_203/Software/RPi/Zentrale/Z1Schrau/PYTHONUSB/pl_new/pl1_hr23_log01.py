@@ -71,7 +71,7 @@ def get_mod_regs():
             if x & 4:
                 l.append(3)
             regSel.append(l)
-    elif "regActive" in hk[si["hostname"]].keys:
+    elif hk.has_option(si["hostname"],"regActive"):
         # evaluate regulator count from "regActive" key in .ini file
         # used before revision 2.3; still available for compatibility
         mract       = hk[si["hostname"]]["regActive"]
@@ -81,7 +81,7 @@ def get_mod_regs():
             vl(3,"'regActive' and module count different")
             return[]
         act2list=[[1],[1,2],[1,2,3]] # <=> [1,2,3]
-        regSel = [ act2list[regActive[i]-1] for i in len(regActive) ]
+        regSel = [ act2list[regActive[i]-1] for i in range(len(regActive)) ]
     else:
         regSel=[[] for i in regActFlags]
     modRegs=list(zip(modules,regSel))
@@ -104,12 +104,12 @@ def make_new_logfile(fLog):
     # 20210104_    -"-      date
     # 010618.dat   -"-      time .dat
     #
-    fLogName = si["logpath"] + co["system"]["logHead"]+"_"
+    fLogName = si["logPath"] + co["system"]["logHead"]+"_"
     fLogName+= si["hostname"]
     fLogName+= "Z" + hk[si["hostname"]]["heizkreis"]
     fLogName+= time.strftime('_%Y%m%d-%H%M%S.dat')
-    if not os.path.exists(si["logpath"]):
-        vl(3,"making directory: "+si["logpath"])
+    if not os.path.exists(si["logPath"]):
+        vl(3,"making directory: "+si["logPath"])
         os.mkdir(si["logpath"])
     #os.path.isfile('/etc/dir/name/file.name.to.test')
     vl(3,"open new file fLogName="+fLogName)
@@ -141,7 +141,7 @@ def save_next_log(fLog):
             #20191016_075934 0901 HK2 :0002091a t4260709.0  S VM 46.0 RM 42.5 VE 20.0 RE 42.5 RS 32.2 P074 E0000 FX0 M2503 A135
             logstr = time.strftime('%Y%m%d_%H%M%S ')
 
-            heizkreis = hk[si["hostname"]]["heizkreis"]
+            heizkreis = int( hk[si["hostname"]]["heizkreis"])
             logstr+= "%02X%02X "%(modAdr,regNr) + "HK%d "%(heizkreis) + ":" + str(x)
 
 
@@ -236,6 +236,7 @@ if __name__ == "__main__":
         print("ZENTRALE: %s main part; rev:%s; %s"%(progName,progRev,progFileName))
         print(60*"-")
     
+    us.sp_init()
     prog_header()
     platform_check()
     log()

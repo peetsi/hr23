@@ -384,7 +384,7 @@ vl=vor.vorlaut
 
 # *** system info functions
 def get_hostname():
-    ''' @brief  read hostname and put it in dict 'sysinfo' 
+    ''' @brief  read hostname and put it in dict 'si' 
         @return sysinfo["hostname"]
     '''
     global si   # system information

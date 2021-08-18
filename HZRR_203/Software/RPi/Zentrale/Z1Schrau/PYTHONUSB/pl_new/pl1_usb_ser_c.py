@@ -10,7 +10,6 @@ pl, 25.07.2021
 '''
 
 import os
-from pl1_modbus_c import modbus_wrap, parse_command_header
 import sys
 import platform
 import time
@@ -19,6 +18,7 @@ import serial
 import traceback
 
 from pl1_hr23_variables import *
+from pl1_modbus_c import modbus_wrap, parse_command_header
 import pl1_hr23_parse_answer as par
 import pl1_usb_ser_c as us
 import pl1_modbus_c as mb
@@ -45,6 +45,7 @@ def sp_init():
             "portWin"     :  hr23Cfg['SerialBus']['serialPort_WIN'],
             "portRPi3"    :  hr23Cfg['SerialBus']['serialPort_PiThree'],
             "portRPi4"    :  hr23Cfg['SerialBus']['serialPort_PiFour'],
+            "port"        :  hr23Cfg['SerialBus']['serialPort_PiFour'],  # TODO
             # TODO select automatically from system information RPi or other
             "baudrate"    :  int(hr23Cfg['SerialBus']['ser_bus_baudrate']),
             "timeout"     :  float(hr23Cfg['SerialBus']['ser_bus_timeout']),
@@ -229,6 +230,7 @@ def tx_command(txCmd) :
 
 def net_dialog(txCmd):
     ''' @brief  send txCmd, wait for answer, repeat if needed'''
+    global sp
     txCmdNr = int(txCmd[3:5],16)
     maxCnt = sp["maxRetries"]
     repeat = 0
@@ -296,9 +298,9 @@ def read_stat(modAdr,subAdr):
         s3 = "E%04X FX%.0f M%.0f A%d"%\
             (rst["ER"],rst["FX"],rst["MT"],rst["NL"],)
         x = s1 + s2 + s3
-        stat_str = cmdHead + ticStr + rst["SN"] + " " + x
+        statStr = cmdHead + ticStr + rst["SN"] + " " + x
 
-    return stat_str
+    return statStr
 
 
 
