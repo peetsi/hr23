@@ -19,7 +19,6 @@ import serial
 import traceback
 
 from pl1_hr23_variables import *
-import vorlaut as vor
 import pl1_hr23_parse_answer as par
 
 #  ***************************
@@ -75,12 +74,12 @@ def ser_instantce() :
                 timeout     = sp["timeout"]
             )
         except serial.SerialException as e:
-            vor.vorlaut( 3,  "01 cannot find: %s"%(sp["port"]))
-            vor.vorlaut( 3,  "   exception = %s"%(e))
+            vl( 3,  "01 cannot find: %s"%(sp["port"]))
+            vl( 3,  "   exception = %s"%(e))
             err = 2
         except Exception as e:
-            vor.vorlaut( 3,  "02 other error with serial port: %s"%(sp["port"]))
-            vor.vorlaut( 3,  "   exception = %s"%(e))
+            vl( 3,  "02 other error with serial port: %s"%(sp["port"]))
+            vl( 3,  "   exception = %s"%(e))
             err = 3
     time.sleep(0.1)
     return err
@@ -93,12 +92,12 @@ def ser_open():
         ser.open() # open USB->RS485 connection
         connected = 1
     except serial.SerialException as e:
-        vor.vorlaut( 3,  "03 cannot open: %s"%(sp["port"]))
-        vor.vorlaut( 3,  "   exception = %s"%(e))
+        vl( 3,  "03 cannot open: %s"%(sp["port"]))
+        vl( 3,  "   exception = %s"%(e))
         err = 3
     except  Exception as e:
-        vor.vorlaut( 3,  "04 something else is wrong with serial port:"%(sp["port"]))
-        vor.vorlaut( 3,  "   exception = %s"%(e))
+        vl( 3,  "04 something else is wrong with serial port:"%(sp["port"]))
+        vl( 3,  "   exception = %s"%(e))
         err = 4
     connected = 0
     time.sleep(0.1)
@@ -112,12 +111,12 @@ def ser_reset_buffer():
         ser.reset_input_buffer()
     except serial.SerialException as e:
         err = 5
-        vor.vorlaut( 3,  "05 cannot erase serial buffers")
-        vor.vorlaut( 3,  "   exception = %s"%(e))
+        vl( 3,  "05 cannot erase serial buffers")
+        vl( 3,  "   exception = %s"%(e))
     except Exception as e:
         err = 6
-        vor.vorlaut( 3,  "06 error with serial port: %s"%(sp["port"]))
-        vor.vorlaut( 3,  "   exception = %s"%(e))
+        vl( 3,  "06 error with serial port: %s"%(sp["port"]))
+        vl( 3,  "   exception = %s"%(e))
     return err
 
 
@@ -128,12 +127,12 @@ def ser_check():
     if ser == None:
         err = ser_instantce()   # define <ser> and <sp>
         if err:
-            vor.vorlaut(3,"serial connection could not be installed "+str(err))
+            vl(3,"serial connection could not be installed "+str(err))
     else:
         if not ser.is_open:
             err = ser_open()    # open serial port
             if err:
-                vor.vorlaut(3,"serial connection not opened",err)
+                vl(3,"serial connection not opened: err="+str(err))
     return err
 
 def connect_rs485():
@@ -155,17 +154,17 @@ def rx_command():
         lrx = ser.readline()     # is blocking until line read or timeout
         #print("lrx=",lrx)
     except serial.SerialTimeoutException as e:
-        vor.vorlaut( 2, "10 timeout receiving string RS485")
-        vor.vorlaut( 2,  "  exception = %s"%(e))
+        vl( 2, "10 timeout receiving string RS485")
+        vl( 2,  "  exception = %s"%(e))
         err=10
     except serial.SerialException as e:
-        vor.vorlaut( 2,  "11 SerialException on read")
-        vor.vorlaut( 2,  "   exception = %s"%(e))
+        vl( 2,  "11 SerialException on read")
+        vl( 2,  "   exception = %s"%(e))
         ser.close()
         err=11
     except Exception as e:
-        vor.vorlaut( 2,  "12 error serial port while reading")
-        vor.vorlaut( 2,  "   exception = %s"%(e))
+        vl( 2,  "12 error serial port while reading")
+        vl( 2,  "   exception = %s"%(e))
         ser.close()
         err=12
 
@@ -178,12 +177,12 @@ def rx_command():
     try:
         l0 = lrx.decode()       # make a string    
     except UnicodeDecodeError as e:
-        vor.vorlaut(3,"!!! UnicodeDecodeError: "+str(e))
+        vl(3,"!!! UnicodeDecodeError: "+str(e))
         line=""
     except Exception as e:
         # some false byte in byte-array
-        vor.vorlaut( 2,  "10 cannot decode line")
-        vor.vorlaut( 2,  "   exception = %s"%(e))
+        vl( 2,  "10 cannot decode line")
+        vl( 2,  "   exception = %s"%(e))
         line = ""
         err=12
     pos=l0.find(":")
@@ -210,17 +209,17 @@ def tx_command(txCmd) :
     try:
         ser.write(txCmd)
     except serial.SerialTimeoutException as e:
-        vor.vorlaut( 2, "07 timeout sending string: %s"%(txCmd))
-        vor.vorlaut( 2,  "  exception = %s"%(e))
+        vl( 2, "07 timeout sending string: %s"%(txCmd))
+        vl( 2,  "  exception = %s"%(e))
         err=1
     except serial.SerialException as e:
-        vor.vorlaut( 2,  "08 SerialException on write")
-        vor.vorlaut( 2,  "   exception = %s"%(e))
+        vl( 2,  "08 SerialException on write")
+        vl( 2,  "   exception = %s"%(e))
         ser.close()
         err=2
     except Exception as e:
-        vor.vorlaut( 2,  "09 error serial port, writing")
-        vor.vorlaut( 2,  "   exception = %s"%(e))
+        vl( 2,  "09 error serial port, writing")
+        vl( 2,  "   exception = %s"%(e))
         ser.close()
         err=3
     ser.flush()                 # send out whole command
@@ -261,10 +260,112 @@ def net_dialog(txCmd):
 
 
 
+#  ******************************
+#  module communication functions
+#  ******************************
+
+def read_stat(modAdr,subAdr):
+    ''' read all status values from module/regulator using command 2 and 4'''
+    ''' modAdr e {1,...,30}, subAdr e {0,1,2,3} <=> {mod,reg1,reg2,reg3}  '''
+    vl(3,"modAdr=%d; subAdr=%d"%(modAdr,subAdr))
+    txCmd = mb.modbus_wrap( modAdr, 0x02, reg,"" ) # staus part 1
+    err,repeat,rxCmd=us.net_dialog(txCmd)
+    time.sleep(0.1)
+
+    txCmd = mb.modbus_wrap( modAdr, 0x04, reg,"" ) # staus part 2
+    err,repeat,rxCmd=us.net_dialog(txCmd)
+    time.sleep(0.1)
+
+
+
+
+
+
+
+
+
+
+
+    '''
+
+    def read_stat(self, modAdr, subAdr):#, retry_count=0, skip_first=0 ) :
+        h = cg.hkr_obj.get_heizkreis_config(0)
+        if len(h) > 5: (self.heizkreis, self.modules, self.modTVor, self.modSendTvor, self.dtLog, self.filtFakt) = h
+        else:          (self.heizkreis, self.modules, self.modTVor, self.modSendTvor, self.dtLog, self.filtFakt) = (self.default_values)
+        if (modAdr == self.modTVor and subAdr > 1): return False
+        ''' read all status values from module
+            using command 2 and 4
+        '''
+        self.__set_rx_response('read_stat(mod=%s,sub=%s)'%(str(modAdr),str(subAdr)))
+        # hrv.reset_cn('')
+
+        self.txCmd = mb.wrap_modbus( modAdr, 2, subAdr, "" )
+        if not self.net_dialog(self.txCmd):
+            #_set_cn2_cn4_err('ser_read_stat','args:2')
+            return False
+
+        time.sleep(0.01)
+        self.txCmd = mb.wrap_modbus( modAdr, 4, subAdr, "" )
+        if not self.net_dialog(self.txCmd):
+            #_set_cn2_cn4_err('ser_read_stat','args:4')
+            return False
+        f=2#self.dbg.const( "__DBG_LVL_FUNCTIONS_AND_RETURN" )
+        self.dbg.m("cn2:",cn2,"cn4:",cn4,cdb=f)
+        self.dbg.m("cn2_ser:",cn2_ser,"cn4_ser:",cn4_ser,cdb=f)
+
+        _cn2, _cn4 = hrv.get_cn('s')
+
+        self.get_milisec(modAdr)
+        self.dbg.m("get_milisec():",st.rxMillis,cdb=f)
+        self.get_jumpers(modAdr)
+        self.dbg.m("get_jumpers():",st.jumpers,cdb=f)
+        # module data:
+        self.cmdHead  = "0002%02X%db "%(int(modAdr),int(subAdr))
+        self.tic      = float(st.rxMillis) / 1000.0
+        self.ticStr   = "t%.1f "%(self.tic)
+
+        #cn2={"SN":0,"VM":0,"RM":0,"VE":0,"RE":0,"RS":0,"PM":0}
+        self.vlMeas   = float(_cn2["VM"])
+        self.rlMeas   = float(_cn2["RM"])
+        self.vlEff    = float(_cn2["VE"])
+        self.rlEff    = float(_cn2["RE"])
+        self.rlSoll   = float(_cn2["RS"])
+        self.posMot   = float(_cn2["PM"])
+
+        #cn4={"ER":0,"FX":0,"MT":0,"NL":0} # command names
+        self.erFlag  = int(_cn4["ER"])
+        self.fixPos  = float(_cn4["FX"])
+        self.motTime = float(_cn4["MT"])
+        self.nLimit  = int(_cn4["NL"])
+
+        s1    = "VM%5.1f RM%5.1f VE%5.1f RE%5.1f "%(self.vlMeas,self.rlMeas,self.vlEff,self.rlEff)
+        s2    = "RS%5.1f P%03.0f "%(self.rlSoll, self.posMot)
+        s3    = "E%04X FX%.0f M%.0f A%d"%(self.erFlag,self.fixPos,self.motTime,self.nLimit)
+        # FX muss noch übersetzt werden.
+        x = s1 + s2 + s3
+        self.read_stat_str = str(self.cmdHead) + str(self.ticStr) + \
+                                str(_cn2["SN"]) + " " + str(x)
+        self.dbg.m("read_stat_str: ", self.read_stat_str, cdb=9)
+        return self.read_stat_str
+    ''''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     # Test functions, Tests
-    
+    ''' 
     def prog_header_var():
         print()
         cmdLine=sys.argv
@@ -273,6 +374,7 @@ if __name__ == "__main__":
         print(60*"=")
         print("ZENTRALE: %s"%(progFileName))
         print(60*"-")
+    '''
 
 
     def test_config():

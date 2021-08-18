@@ -429,6 +429,7 @@ if __name__ == "__main__" :
    # Test functions, Tests
 
 
+    ''' 
     def prog_header_var():
         print()
         cmdLine=sys.argv
@@ -437,7 +438,7 @@ if __name__ == "__main__" :
         print(60*"=")
         print("ZENTRALE: %s"%(progFileName))
         print(60*"-")
-    
+    '''
 
     prog_header_var()
     # usage examples

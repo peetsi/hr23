@@ -3,7 +3,119 @@
 
 # variables combined in classes
 
+import sys
+import platform
+import time
+import configparser
+import vorlaut as vor
+
+
+'''
+********************
+   system info
+********************
+'''
+'''
+SD-card protection information:
+-------------------------------
+he SD-card cannot stand many writes - wears with time
+so data will be logged to a USB-FLASH memory
+best is to invoke the RAM-Filesystem on the RPi to protect SD in final installation
+Where data has to be stored is defined in the "pl1_hr23_config.ini" file
+
+
+.ini files:
+-----------
+Most system relevant data is stored in .ini files:
+    hr23_config.ini         for application software (RPi) data
+                            this file is in a fixed file, relative to the current
+                            directory  "config/pl1_hr23_config.ini"
+    heizkreis.ini           for heizkreis configuration, modules etc
+'''
+
+
+
+
+
+
+'''
+***************************************************
+Globale Variable, Klassen etc.
+***************************************************
+'''
+progName = "hr2"
+progRev = "2.3.0"
 PROT_REV = "b"      # protocol revision for hzrr200
+
+# *** configuration parameters in .ini files:
+co=configparser.ConfigParser()  # application and implementation data
+hk=configparser.ConfigParser()  # Heizkreis specific data
+
+si = {}                         # system information
+
+modules=[]
+
+
+
+'''
+***************************************************
+            ZENTRALE APPLICATION DATA
+***************************************************
+'''
+def hr_init():
+    '''initialize global variables for whole application'''
+    global co, hk, si
+    
+    # *** SYSTEM CONFIGURATION
+    co.read("config/pl1_hr23_config.ini")
+
+    #hostNameFile = co["system"]["hostNameFile"]
+
+    # *** system information
+    si["hostname"]  = get_hostname()              
+    si["opsys"]     = platform.system()    # "Linux",
+
+    # *** log-file info
+    if si["hostname"]=="testhost":
+        si["logpath"]="log/"        # relative to current dir
+    elif "True" in co["system"]["logOnUSB"]:
+        si["logPath"]=co["system"]["logPath_USB_LINUX"]
+    else:
+        si["logPath"]=co["system"]["logPath_local_LINUX"]
+    
+    
+    # *** HEIZKREIS CONFIGURATION    
+    # read file-name with heizkreis configuration data
+    fromUSB = co["system"]["confUSB"]    
+    if si["hostname"]=="testhost":
+        confHkFile = "config/heizkreis.ini"
+    elif "True" in fromUSB:
+        confHkFile = co["system"]["confPath_USB_linux"]
+    else:
+        confHkFile = co["system"]["confPath_local_linux"]
+    # read configuration file
+    ans=hk.read(confHkFile)
+    print(ans)
+    print(hk.sections())
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+***************************************************
+                    MODULE DATA
+***************************************************
+'''
 
 '''
 Data organization:
@@ -68,13 +180,11 @@ NOTE: save data to EEPROM with an explicit command to make changes permanent.
 Another dictionary holds data for sending and receiving via the RS485 network with the modules
 
 '''
-import platform
-import sys
 
 
 '''
 ******************
-   STATUS
+  MODULE STATUS
 ******************
 '''
 
@@ -118,7 +228,7 @@ stats = [stat for i in range(31)]   # index 0 is unused -> index = module number
 
 ''' 
 ******************
-    PARAMETER
+ MODULE PARAMETER
 ******************
 '''
 
@@ -261,28 +371,6 @@ rxd = {
 }
 
 
-'''
-********************
-   system info
-********************
-'''
-
-# *** system information
-sysinfo = {
-    "hostname"  :   "",
-    "path"      :   "",
-    # operating system
-    "opsys"     :   "",     # operating system
-    "opsysrev"  :   "",     # revision number of operating system
-    # hardware as far as Raspberry Pi used
-    "RPiNr"     :   0,      # Raspberry Pi number e {3,4}
-    "pyrev"     :   "",     # revision number of Python interpreter
-    # ++ TBD
-}
-
-
-
-
 
 
 
@@ -290,33 +378,37 @@ sysinfo = {
 # FUNCTIONS
 # *****************************
 
+# *** some global functions
+vl=vor.vorlaut
+
+
 # *** system info functions
 def get_hostname():
     ''' @brief  read hostname and put it in dict 'sysinfo' 
         @return sysinfo["hostname"]
-        @return error nr, 0 on success
     '''
+    global si   # system information
     err=0
     if platform.system() == "Linux":
         try:
             with open("/etc/hostname","r") as fin:
                 #fin = open("/etc/hostname","r")
-                sysinfo["hostname"] = fin.read().strip()
+                si["hostname"] = fin.read().strip()
                 #fin.close()
         except Exception as e:
             print("ERR reading hostname; ",e)
-            sysinfo["hostname"] = "NOTDEF"
+            si["hostname"] = "NOTDEF"
             err=1
     else:
-        sysinfo["hostname"] = "NOTDEF"
-        sysinfo["hostname"] = "Z1Schrau"  # TODO remove, only for debugging
+        si["hostname"] = "NOTDEF"
         err=2
-    return err,sysinfo["hostname"]
+    # for debugging on other Computers replace hostname:
+    if "pl-Jeli" in si["hostname"]:
+        # add more names for debugging
+        si["hostname"] = "testhost"
+    return si["hostname"]
 
 
-def set_sysinfo():
-    sysinfo["hostname"] = get_hostname()
-    sysinfo["opsys"] = platform.system()    # "Linux",
 
 
 
@@ -367,7 +459,7 @@ def parameters_zero():
 def platform_check():
     pyVers = platform.python_version()
     print("Python version:", pyVers)
-    sysinfo["pyrev"] = pyVers
+    si["pyrev"] = pyVers
     if pyVers < "3.6":
         print("must be at least Python 3.6")
         sys.exit(1)
@@ -388,17 +480,16 @@ if __name__ == "__main__":
 
 
 
-    prog_header_var()   # test ok
+    #prog_header_var()   # test ok
     #platform_check()    # test ok
+    #parameters_zero()   # test ok
     #param_list(1)       # test ok
-    #parameters_zero()  # test ok
-    #param_list(1)      # test ok
     #status_list(3)      # test ok
+    #get_hostname()      # test ok
+    #  ->print("hostname =",si["hostname"])
 
-    err=get_hostname()
-    print("err=",err,sysinfo["hostname"])
 
-    set_sysinfo()
-    print("hostname=",sysinfo["hostname"])
-    print("opsys=",sysinfo["opsys"])
+
+
+
 

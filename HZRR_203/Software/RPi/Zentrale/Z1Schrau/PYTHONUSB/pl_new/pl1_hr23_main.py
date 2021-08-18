@@ -14,10 +14,22 @@ import pl1_hr23_parse_answer as par
 import pl1_usb_ser_c as us
 import pl1_modbus_c as mb
 
-progName = "hr2"
-progRev = "2.3.0"
 
-hk=configparser.ConfigParser()
+
+
+'''
+***************************************************
+diverse Funktionen
+***************************************************
+'''
+
+
+
+'''
+***************************************************
+hr23 Funktionen
+***************************************************
+'''
 
 def send_temp_vorlauf( vlmodules, modZentrale ):
     ''' @brief  send Vorlauftemperature to modules'''
@@ -59,37 +71,30 @@ def show_mod_status(modules,regulators,mode=0):
             txCmd = mb.modbus_wrap( modAdr, 0x04, reg,"" ) # staus part 2
             #err,repeat,rxCmd=us.net_dialog(txCmd)
             time.sleep(0.1)
-            
+
             if mode==0:
                 print(rst)
             if mode==1:
                 s1 = " %2d   %1d "%(modAdr,reg)
-
                 VLmess=rst["VM"]
-                if VLmess==-127.0:
-                    s2=" Fehlt"
-                else:
-                    s2="% 6.1f"%(VLmess)
-
+                s2=" Fehlt" if VLmess==-127.0 else "% 6.1f"%(VLmess)
                 s3="% 6.1f"%(rst["VE"])
-
                 RLmess=rst["RM"]
-                if RLmess==-127.0:
-                    s4=" Fehlt"
-                else:
-                    s4="% 6.1f"%(RLmess)
-
+                s4=" Fehlt" if RLmess==-127.0 else "% 6.1f"%(RLmess)
                 s5="% 6.1f"%(rst["RE"])
                 s6="   %3d"%(rst["PM"])
-
                 sg=s1+s2+s3+s4+s5+s6
                 print(sg)
-
                 #print(" %2d   %1d % 6.1f % 6.1f % 6.1f % 6.1f   %3d"%\
                 #        (modAdr,reg,rst["VM"],rst["VE"],rst["RM"],rst["RE"],rst["PM"],)) 
 
 
 
+'''
+***************************************************
+INBETRIEBNAHME MENUE und Fuktionen
+***************************************************
+'''
 
 
 modules=[]
@@ -152,11 +157,6 @@ def mod_list_interactive(lsel,lrange ):
 
 
 
-
-def select_regulators():
-    global regSel
-
-
 def inbetriebnahme():
     ''' @brief  einfache Inbetribnahme
         - Einlesen der Werte von den Modulen
@@ -168,12 +168,12 @@ def inbetriebnahme():
     global modSel
     global regSel
 
-    # *** Inlesen der Heizkreisparameter
+    # *** Einlesen der Heizkreisparameter
     us.ser_check()
 
     #"Z1Schrau"
     hk.read("config/heizkreis.ini")
-    err,hostname=get_hostname()
+    hostname=get_hostname()
     print( hk.sections())
     print( hk[hostname] )
     mods        = hk[hostname]["modules"]
@@ -224,28 +224,36 @@ def inbetriebnahme():
             busy=False
 
 
+'''
+***************************************************
+NORMALE FUKTION - infinite loop
+***************************************************
+'''
+
+def hr_main():
+    ''' main-loop for permanent work as Zentrale '''
+    log()
 
 
-def platform_check():
-    pyVers = platform.python_version()
-    print("Python version:", pyVers)
-    if pyVers < "3.6":
-        print("must be at least Python 3.6")
-        sys.exit(1)
 
-
-def prog_header():
-    print()
-    cmdLine=sys.argv
-    progPathName = sys.argv[0]
-    progFileName = progPathName.split("/")[-1]
-    print(60*"=")
-    print("ZENTRALE: %s main part; rev:%s; %s"%(progName,progRev,progFileName))
-    print(60*"-")
-
+'''
+***************************************************
+    START OF THIS MODULE
+***************************************************
+'''
 if __name__ == "__main__":
-    prog_header()
-    platform_check()
+
+
+    def prog_header():
+        print()
+        cmdLine=sys.argv
+        progPathName = sys.argv[0]
+        progFileName = progPathName.split("/")[-1]
+        print(60*"=")
+        print("ZENTRALE: %s main part; rev:%s; %s"%(progName,progRev,progFileName))
+        print(60*"-")
+        prog_header()
+        platform_check()
     
 
     inbetriebnahme()
