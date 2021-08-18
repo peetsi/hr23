@@ -212,7 +212,7 @@ rst = {
                     #       ("last direction");
     "MT"  :  0.0,   # sec;  total motor running time since power on
     "NL"  :  0,     # 1;    number of motor driving to limit
-    "NB"  :  0,     # 1;    number of 
+    "NB"  :  0,     # 1;    number of boots TODO tbd
 }
 
 # module status data for one module including 3 regulators

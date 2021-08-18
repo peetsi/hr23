@@ -149,14 +149,6 @@ def parse_command_header(cmd):
 if __name__ == "__main__" :
    # Test functions, Tests
     
-    def prog_header_var():
-        print()
-        cmdLine=sys.argv
-        progPathName = sys.argv[0]
-        progFileName = progPathName.split("/")[-1]
-        print(60*"=")
-        print("ZENTRALE: %s"%(progFileName))
-        print(60*"-")
 
     def show_command_header():
         global rxd

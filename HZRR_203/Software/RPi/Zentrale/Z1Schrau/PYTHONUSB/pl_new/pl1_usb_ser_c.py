@@ -20,6 +20,8 @@ import traceback
 
 from pl1_hr23_variables import *
 import pl1_hr23_parse_answer as par
+import pl1_usb_ser_c as us
+import pl1_modbus_c as mb
 
 #  ***************************
 #  CONNECT USB-RS485 Interface
@@ -124,12 +126,11 @@ def ser_check():
     err=0
     global ser
 
-    if ser == None:
+    if ser is None:
         err = ser_instantce()   # define <ser> and <sp>
         if err:
             vl(3,"serial connection could not be installed "+str(err))
-    else:
-        if not ser.is_open:
+    elif not ser.is_open:
             err = ser_open()    # open serial port
             if err:
                 vl(3,"serial connection not opened: err="+str(err))
@@ -240,7 +241,7 @@ def net_dialog(txCmd):
                 err,rxCmd = rx_command()    # try reading again
             if len(rxCmd) > 7:
                 rxCmdNr = int(rxCmd[3:5],16)
-                #print("cmdNrs tx/rx=",txCmdNr,"/",rxCmdNr,end="")
+                #vl(2,"cmdNrs tx/rx=",txCmdNr,"/",rxCmdNr,end="")
             err,parse = par.parse_answer(rxCmd)
             if err:
                 print("repeat=",repeat,"; err=",err,"; parse=",parse)
@@ -248,8 +249,8 @@ def net_dialog(txCmd):
             else:
                 return err, repeat, parse
     except Exception as e:
-        print("netdialog: error sending / receiving data",e)
-        print(traceback.format_exc())
+        vl(2,"netdialog: error sending / receiving data:"+str(e))
+        vl(2,traceback.format_exc())
         return -1,repeat,e
     
     if repeat < maxCnt:
@@ -267,87 +268,37 @@ def net_dialog(txCmd):
 def read_stat(modAdr,subAdr):
     ''' read all status values from module/regulator using command 2 and 4'''
     ''' modAdr e {1,...,30}, subAdr e {0,1,2,3} <=> {mod,reg1,reg2,reg3}  '''
+    # read status part 1
     vl(3,"modAdr=%d; subAdr=%d"%(modAdr,subAdr))
-    txCmd = mb.modbus_wrap( modAdr, 0x02, reg,"" ) # staus part 1
+    txCmd = mb.modbus_wrap( modAdr, 0x02, subAdr,"" ) # staus part 1
+    err,repeat,rxCmd=us.net_dialog(txCmd)
+    time.sleep(0.1)
+    # read status part 2
+    txCmd = mb.modbus_wrap( modAdr, 0x04, subAdr,"" ) # staus part 2
     err,repeat,rxCmd=us.net_dialog(txCmd)
     time.sleep(0.1)
 
-    txCmd = mb.modbus_wrap( modAdr, 0x04, reg,"" ) # staus part 2
-    err,repeat,rxCmd=us.net_dialog(txCmd)
-    time.sleep(0.1)
-
-
-
-
-
-
-
-
-
-
-
-    '''
-
-    def read_stat(self, modAdr, subAdr):#, retry_count=0, skip_first=0 ) :
-        h = cg.hkr_obj.get_heizkreis_config(0)
-        if len(h) > 5: (self.heizkreis, self.modules, self.modTVor, self.modSendTvor, self.dtLog, self.filtFakt) = h
-        else:          (self.heizkreis, self.modules, self.modTVor, self.modSendTvor, self.dtLog, self.filtFakt) = (self.default_values)
-        if (modAdr == self.modTVor and subAdr > 1): return False
-        ''' read all status values from module
-            using command 2 and 4
-        '''
-        self.__set_rx_response('read_stat(mod=%s,sub=%s)'%(str(modAdr),str(subAdr)))
-        # hrv.reset_cn('')
-
-        self.txCmd = mb.wrap_modbus( modAdr, 2, subAdr, "" )
-        if not self.net_dialog(self.txCmd):
-            #_set_cn2_cn4_err('ser_read_stat','args:2')
-            return False
-
-        time.sleep(0.01)
-        self.txCmd = mb.wrap_modbus( modAdr, 4, subAdr, "" )
-        if not self.net_dialog(self.txCmd):
-            #_set_cn2_cn4_err('ser_read_stat','args:4')
-            return False
-        f=2#self.dbg.const( "__DBG_LVL_FUNCTIONS_AND_RETURN" )
-        self.dbg.m("cn2:",cn2,"cn4:",cn4,cdb=f)
-        self.dbg.m("cn2_ser:",cn2_ser,"cn4_ser:",cn4_ser,cdb=f)
-
-        _cn2, _cn4 = hrv.get_cn('s')
-
-        self.get_milisec(modAdr)
-        self.dbg.m("get_milisec():",st.rxMillis,cdb=f)
-        self.get_jumpers(modAdr)
-        self.dbg.m("get_jumpers():",st.jumpers,cdb=f)
+    # module
+    if subAdr == 0:
+        # status data from module itself
+        statStr=""  # TODO read real status
+    else:
+        # status data from regulator 1,2,3 (index 0,1,2)
         # module data:
-        self.cmdHead  = "0002%02X%db "%(int(modAdr),int(subAdr))
-        self.tic      = float(st.rxMillis) / 1000.0
-        self.ticStr   = "t%.1f "%(self.tic)
-
-        #cn2={"SN":0,"VM":0,"RM":0,"VE":0,"RE":0,"RS":0,"PM":0}
-        self.vlMeas   = float(_cn2["VM"])
-        self.rlMeas   = float(_cn2["RM"])
-        self.vlEff    = float(_cn2["VE"])
-        self.rlEff    = float(_cn2["RE"])
-        self.rlSoll   = float(_cn2["RS"])
-        self.posMot   = float(_cn2["PM"])
-
-        #cn4={"ER":0,"FX":0,"MT":0,"NL":0} # command names
-        self.erFlag  = int(_cn4["ER"])
-        self.fixPos  = float(_cn4["FX"])
-        self.motTime = float(_cn4["MT"])
-        self.nLimit  = int(_cn4["NL"])
-
-        s1    = "VM%5.1f RM%5.1f VE%5.1f RE%5.1f "%(self.vlMeas,self.rlMeas,self.vlEff,self.rlEff)
-        s2    = "RS%5.1f P%03.0f "%(self.rlSoll, self.posMot)
-        s3    = "E%04X FX%.0f M%.0f A%d"%(self.erFlag,self.fixPos,self.motTime,self.nLimit)
-        # FX muss noch übersetzt werden.
+        cmdHead  = "0002%02X%d%s "%(int(modAdr),int(subAdr),PROT_REV)
+        tic      = float(rst["tic2"]) / 1000.0
+        ticStr   = "t%.1f "%(tic)
+        # status data:
+        s1 = "VM%5.1f RM%5.1f VE%5.1f RE%5.1f "%\
+            (rst["VM"],rst["RM"],rst["VE"],rst["RE"])
+        s2 = "RS%5.1f P%03.0f "%\
+            (rst["RS"],rst["PM"])
+        s3 = "E%04X FX%.0f M%.0f A%d"%\
+            (rst["ER"],rst["FX"],rst["MT"],rst["NL"],)
         x = s1 + s2 + s3
-        self.read_stat_str = str(self.cmdHead) + str(self.ticStr) + \
-                                str(_cn2["SN"]) + " " + str(x)
-        self.dbg.m("read_stat_str: ", self.read_stat_str, cdb=9)
-        return self.read_stat_str
-    ''''
+        stat_str = cmdHead + ticStr + rst["SN"] + " " + x
+
+    return stat_str
 
 
 

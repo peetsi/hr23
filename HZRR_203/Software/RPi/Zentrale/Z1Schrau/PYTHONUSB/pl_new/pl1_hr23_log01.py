@@ -42,7 +42,7 @@ diverse Funktionen
 
 def get_mod_regs():
     ''' read all modules and active regulators from .ini file'''
-    ''' @return modreg     [ 1,[0,1,2], 2,[0], ...]; active modules and regulators'''
+    ''' @return modreg     [ 1,[1,2], 2,[3], ...]; active modules and regulators'''
     global modules
     # *** get active modules from .ini file
 
@@ -65,11 +65,11 @@ def get_mod_regs():
         for x in regActFlags:
             l=[]
             if x & 1:
-                l.append(0)
-            if x & 2:
                 l.append(1)
-            if x & 4:
+            if x & 2:
                 l.append(2)
+            if x & 4:
+                l.append(3)
             regSel.append(l)
     elif "regActive" in hk[si["hostname"]].keys:
         # evaluate regulator count from "regActive" key in .ini file
@@ -80,7 +80,7 @@ def get_mod_regs():
             err=2
             vl(3,"'regActive' and module count different")
             return[]
-        act2list=[[0],[0,1],[0,1,2]] # <=> [1,2,3]
+        act2list=[[1],[1,2],[1,2,3]] # <=> [1,2,3]
         regSel = [ act2list[regActive[i]-1] for i in len(regActive) ]
     else:
         regSel=[[] for i in regActFlags]
@@ -128,7 +128,8 @@ def save_next_log(fLog):
         vl(3,"modReg=%s; modAdr=%d; modIdx=%d; regs=%s"%\
            (str(modReg),modAdr,modIdx,str(regs)))
         for regNr in regs:
-            x = us.read_stat(modAdr,regNr)
+            regIdx=regNr-1
+            x = us.read_stat(modAdr,regIdx)
             # *** generate logfile data-set for one module / regulator
             '''
             20210317_033815 0201 HK0 :0002021b t0.0 0 VM  0.0 RM  0.0 VE  0.0 RE  0.0 RS  0.0 P000 E0000 FX0 M0 A0
@@ -141,7 +142,7 @@ def save_next_log(fLog):
             logstr = time.strftime('%Y%m%d_%H%M%S ')
 
             heizkreis = hk[si["hostname"]]["heizkreis"]
-            logstr+= "%02X%02X "%(modAdr,contr) + "HK%d "%(heizkreis) + ":" + str(x)
+            logstr+= "%02X%02X "%(modAdr,regNr) + "HK%d "%(heizkreis) + ":" + str(x)
 
 
         
@@ -154,6 +155,7 @@ def save_next_log(fLog):
 def send_next_vlt():
     ''' measure Vorlauf temperature from Zentrale-module and send it to other modules'''
     # *** get active modules from .ini file
+    '''
     mods        = hk[hostname]["modules"]   # ',' separated string with all module numbers
     modules     = [int(i) for i in mods.split(",")] # all active modules as integer list
     modTvor     = float(hk[hostname]["Modul_Tvor"]) # get central VL Temp. from this module
@@ -163,6 +165,7 @@ def send_next_vlt():
     filtFaktTvor= float(hk[hostname]["filterfaktor"]) # factor for low-pass filter
     mract       = hk[hostname]["regActive"]
     regActive   = [int(i) for i in mract.split(",")]# active regulator count for each module
+    '''
     pass
 
 

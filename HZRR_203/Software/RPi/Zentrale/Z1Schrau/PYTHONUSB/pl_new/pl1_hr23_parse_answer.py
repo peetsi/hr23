@@ -11,7 +11,7 @@ print("hello")
 #
 ''' 
 def parStr2list(pyld):
-    # split ',' separated values from st.rxCmd in list 
+    ''' split ',' separated values from st.rxCmd in list '''
     if (pyld == ""):
         return 1,[]
     pl = pyld.rxCmd.split(",")
@@ -32,10 +32,10 @@ def parse_answer(rxCmdStr):
     global rxd
     err=0
 
-    #print("parse_answer(): rxCmd=",rxCmdStr)
+    #vl(3,"parse_answer(): rxCmd=",rxCmdStr)
     # *** remove checksums
     err,rxCmdU = mb.modbus_unwrap(rxCmdStr)
-    #print("err=",err,"; rxCmdU=",rxCmdU)
+    #vl(3,"err=",err,"; rxCmdU=",rxCmdU)
     if err != 0:
         return err, "err unwrapping received command: "+str(err)
 
@@ -61,24 +61,20 @@ def parse_answer(rxCmdStr):
             if "ACK" in pyld :   # "ACK" - no data to be sent
                 return 0,"ACK"
         elif rxSubAdr in [1,2,3]:
-            # "ACK" - no data received
-            if "ACK" in pyld :
-                return 0,pyld
-
             '''
             # parse a line e.g.:
-            // no winter- or summer operation -> omitted in type b protocol
             // cmd = 2
             // SN:    season, typical S or W; maybe something else e.g. empty like ",,"
+            //        discarded in rev2.x of HZ-RR; is forced to '-' from rev. 2.3
             // VM RM: Vl/Rl temp. measured
             // VE RE: Vl/Rl temp. effectively used for regulation
             // RS:    Rl temp. soll
-            // PM:     Permille motor-valve setting; 0=closed, 999=open
+            // PM:    Permille motor-valve setting; 0=closed, 999=open
             // cmd = 4
-            // ER:     Error message bits set
+            // ER:    Error message bits set
             // FX:    fixed position; MOT_STOP (somewhere), MOT_STARTPOS, MOT_CLOSE or MOT_OPEN
-            // MT:     total motor-on time
-            // NL:     Number of limits reached (higher load to gears)
+            // MT:    total motor-on time
+            // NL:    Number of limits reached (higher load to gears)
             //           1         2         3         4         5         6  
             //  1234567890123456789012345678901234567890123456789012345678901234
             // ":00021E1b,W,VM0.0,RM0.0,VE0.0,RE0.0,RS0.0,PM0,09AB01cl0"  // could become a bit longer; OK
@@ -170,10 +166,6 @@ def parse_answer(rxCmdStr):
             if "ACK" in pyld :
                 return 0,"ACK"
         elif rxSubAdr in [1,2,3]:
-            # "ACK" - no data received
-            if "ACK" in pyld :
-                return 0,"ACK"
-
             l = pyld.strip().split(",")
             while(l[0]==''):
                 l.pop(0)
