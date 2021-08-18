@@ -9,12 +9,11 @@ import time
 import configparser
 #
 from pl1_hr23_variables import *
-import vorlaut as vor
 import pl1_hr23_parse_answer as par
 import pl1_usb_ser_c as us
 import pl1_modbus_c as mb
 
-
+##
 
 
 '''
