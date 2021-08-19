@@ -107,20 +107,6 @@ def ser_open():
     return err
 
 
-def ser_reset_buffer():
-    err=0
-    try:
-        ser.reset_output_buffer()
-        ser.reset_input_buffer()
-    except serial.SerialException as e:
-        err = 5
-        vl( 3,  "05 cannot erase serial buffers")
-        vl( 3,  "   exception = %s"%(e))
-    except Exception as e:
-        err = 6
-        vl( 3,  "06 error with serial port: %s"%(sp["port"]))
-        vl( 3,  "   exception = %s"%(e))
-    return err
 
 
 def ser_check():
@@ -135,6 +121,23 @@ def ser_check():
             err = ser_open()    # open serial port
             if err:
                 vl(3,"serial connection not opened: err="+str(err))
+    return err
+
+def ser_reset_buffer():
+    err=0
+    ser_check()
+    try:
+        ser.reset_output_buffer()
+        ser.reset_input_buffer()
+    except serial.SerialException as e:
+        err = 5
+        vl( 3,  "05 cannot erase serial buffers")
+        vl( 3,  "   exception = %s"%(e))
+    except Exception as e:
+        err = 6
+        vl( 3,  "06 error with serial port: %s"%(sp["port"]))
+        vl( 3,  "   exception = %s"%(e))
+    time.sleep(0.01)
     return err
 
 def connect_rs485():
@@ -158,18 +161,25 @@ def rx_command():
     except serial.SerialTimeoutException as e:
         vl( 2, "10 timeout receiving string RS485")
         vl( 2,  "  exception = %s"%(e))
+        line="serial timeout"
         err=10
     except serial.SerialException as e:
         vl( 2,  "11 SerialException on read")
         vl( 2,  "   exception = %s"%(e))
         ser.close()
+        line="serial exception; "+str(e)
         err=11
     except Exception as e:
         vl( 2,  "12 error serial port while reading")
         vl( 2,  "   exception = %s"%(e))
         ser.close()
+        line="other serial exception; "+str(e)
         err=12
-
+    if err:
+        return err, line
+    if lrx==b"":
+        err=13
+        return err, "empty rx-packet"
     # *** check answer for correct format
     # received byte-array looks somehow like:
     #   b"xxx:dddd...dddd<lrc><cr><lf>"
@@ -179,18 +189,34 @@ def rx_command():
     try:
         l0 = lrx.decode()       # make a string    
     except UnicodeDecodeError as e:
-        vl(3,"!!! UnicodeDecodeError: "+str(e))
-        line=""
+        #vl(3,"!!! UnicodeDecodeError: "+str(e))
+        line="serial packet: unicode error= "+str(e)
+        err=20
     except Exception as e:
         # some false byte in byte-array
-        vl( 2,  "10 cannot decode line")
-        vl( 2,  "   exception = %s"%(e))
-        line = ""
-        err=12
-    pos=l0.find(":")
-    line = l0[pos:]         # take part from and including ':'
-    line = line.strip()     # remove white-spaces from either end
-    rxd["cmdStr"] = line    # put result to global dict.
+        #vl( 2,  "10 cannot decode line")
+        #vl( 2,  "   exception = %s"%(e))
+        line = "serial rx-packet: error= "+str(e)
+        err=21
+    if err:
+        return err,line
+
+    if len(l0)==0:
+        err=22
+        return err,"rx-string empty"
+
+    pos=l0.find(":")        # in case leading bytes are before ':'
+    if pos < 0:
+        # ':' missing -> received packet is invalid
+        vl(3,"received line has no ':' >%s<"%(l0))
+        err=23
+        line="rx-string: missing ':'"
+        return err,line
+    else:
+        line = l0[pos:]         # take part from and including ':'
+        line = line.strip()     # remove white-spaces from either end
+    rxd["cmdStr"] = line        # put result to global dict.
+
     return err,line    
 
 
@@ -231,30 +257,34 @@ def tx_command(txCmd) :
 def net_dialog(txCmd):
     ''' @brief  send txCmd, wait for answer, repeat if needed'''
     global sp
+    txAdr   = int(txCmd[1:3],16)    # module address to which the command is sent
     txCmdNr = int(txCmd[3:5],16)
     maxCnt = sp["maxRetries"]
     repeat = 0
-    try:
-        while repeat < maxCnt :
-            ser_reset_buffer()
-            tx_command( txCmd )
-            err,rxCmd  = rx_command()
-            if err:
-                err,rxCmd = rx_command()    # try reading again
-            if len(rxCmd) > 7:
-                rxCmdNr = int(rxCmd[3:5],16)
-                #vl(2,"cmdNrs tx/rx=",txCmdNr,"/",rxCmdNr,end="")
-            err,parse = par.parse_answer(rxCmd)
-            if err:
-                print("repeat=",repeat,"; err=",err,"; parse=",parse)
-                repeat += 1
+    while repeat < maxCnt :
+        ser_reset_buffer()
+        tx_command( txCmd )
+        err,rxCmd  = rx_command()
+        if err:
+            repeat+=1
+        elif len(rxCmd) > 7:
+            rxAdr   = int(rxCmd[5:7],16)    # address from sender module
+            rxCmdNr = int(rxCmd[3:5],16)
+            if rxCmdNr != txCmdNr:
+                repeat+=1
+            elif rxAdr != txAdr:
+                repeat+=1
             else:
-                return err, repeat, parse
-    except Exception as e:
-        vl(2,"netdialog: error sending / receiving data:"+str(e))
-        vl(2,traceback.format_exc())
-        return -1,repeat,e
-    
+                err,parse = par.parse_answer(rxCmd)
+                if err:
+                    repeat += 1
+                else:
+                    # properly parsed answer
+                    parse=parse.strip().strip(",")
+                    break
+        else:
+            # too short
+            repeat+=1
     if repeat < maxCnt:
         return 0, repeat, parse
     else:
@@ -266,6 +296,29 @@ def net_dialog(txCmd):
 #  ******************************
 #  module communication functions
 #  ******************************
+
+def ping_direct(modAdr,verbose):
+    ''' ping directly using tx- and rx-functions '''
+    txCmd = modbus_wrap( modAdr, 0x01, 0,"" )  # ping
+    if verbose:
+        vl(1,"    test1: txCmd=%s"%(txCmd.strip()))
+    ser_reset_buffer()
+    tx_command(txCmd)
+    err,rxCmd = rx_command()
+    if verbose:
+        vl(1,"    test1: err=%d; rxCmd=%s"%(err,rxCmd))
+    return err, rxCmd
+
+
+def ping(modAdr,verbose):
+    ''' send ping command to modAdr and return ACK/NAK/-1(timeout)'''
+    txCmd = modbus_wrap( modAdr, 0x01, 0,"" ) # ping
+    err,repeat,rxCmd=net_dialog(txCmd)
+    if verbose:
+        vl(2,"mod=%d; err=%d; repeat=%d; rxCmd=%s"%(modAdr,err,repeat,rxCmd))
+    #time.sleep(0.2)
+    return err,repeat,rxCmd
+
 
 def read_stat(modAdr,subAdr):
     ''' read all status values from module/regulator using command 2 and 4'''
@@ -280,28 +333,26 @@ def read_stat(modAdr,subAdr):
     err,repeat,rxCmd=us.net_dialog(txCmd)
     time.sleep(0.1)
 
-    # module
-    if subAdr == 0:
-        # status data from module itself
-        statStr=""  # TODO read real status
-    else:
-        # status data from regulator 1,2,3 (index 0,1,2)
-        # module data:
-        cmdHead  = "0002%02X%d%s "%(int(modAdr),int(subAdr),PROT_REV)
-        tic      = float(rst["tic2"]) / 1000.0
-        ticStr   = "t%.1f "%(tic)
-        # status data:
-        s1 = "VM%5.1f RM%5.1f VE%5.1f RE%5.1f "%\
-            (rst["VM"],rst["RM"],rst["VE"],rst["RE"])
-        s2 = "RS%5.1f P%03.0f "%\
-            (rst["RS"],rst["PM"])
-        s3 = "E%04X FX%.0f M%.0f A%d"%\
-            (rst["ER"],rst["FX"],rst["MT"],rst["NL"],)
-        x = s1 + s2 + s3
-        statStr = cmdHead + ticStr + rst["SN"] + " " + x
 
-    return statStr
+def get_status(modAdr,regNr,verbose=False):
+    ''' read status from module modAdr/regNr; verbose'''
+    txCmd = modbus_wrap( modAdr, 0x02, regNr,"" ) # staus part 1
+    err,repeat,rxCmd=net_dialog(txCmd)
+    if err:
+        return -1,"err reading part1 of status"
+    if verbose:
+        print("    cmd2; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
 
+    txCmd = modbus_wrap( modAdr, 0x04, regNr,"" ) # staus part 2
+    err,repeat,rxCmd=net_dialog(txCmd)
+    if err:
+        return -2,"err reading part2 of status"
+    if verbose:
+        print("    cmd4; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
+    #time.sleep(0.2)
+    if verbose:
+        print("    ",rst)
+    return err,rst
 
 
 
@@ -318,17 +369,6 @@ def read_stat(modAdr,subAdr):
 
 if __name__ == "__main__":
     # Test functions, Tests
-    ''' 
-    def prog_header_var():
-        print()
-        cmdLine=sys.argv
-        progPathName = sys.argv[0]
-        progFileName = progPathName.split("/")[-1]
-        print(60*"=")
-        print("ZENTRALE: %s"%(progFileName))
-        print(60*"-")
-    '''
-
 
     def test_config():
         configFile='config/pl1_hr23_config.ini'
@@ -353,35 +393,38 @@ if __name__ == "__main__":
     #test_config()       # test ok
     #connect_rs485()     # test ok
 
-    # test dialog with modules
-    print("Test 1. ping-command, echo, directly using txrx_command()")
-    modAdr=1
-    txCmd = modbus_wrap( modAdr, 0x01, 0,"" )  # ping
-    print("txCmd=",txCmd)
-    tx_command(txCmd)
-    err,rxCmd = rx_command()
-    print("rxCmd=",rxCmd)
+    sp_init()           # set serial port parameters from .ini file
 
-    print("Test 2. ping-command, echo, using net_dialog()")
-    for modAdr in [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]:
+    
+    # Serial test - send a command for check with oszilloscope
+    osziTest=0
+    if osziTest:
+        modAdr=2
         txCmd = modbus_wrap( modAdr, 0x01, 0,"" ) # ping
-        err,repeat,rxCmd=net_dialog(txCmd)
-        print("mod=",modAdr,"; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
-        #time.sleep(0.2)
+        while(True):
+            tx_command(txCmd)
+            time.sleep(0.5)
+    
+    modules=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]
+    modules=[1,2,3,30]
+    modules=[1,2,30]
 
-    print("Test 3. read status, using net_dialog()")
-    for modAdr in [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]:
+    # test dialog with modules
+    print("\nTest 1. ping-command, echo, directly using txrx_command()")
+    for modAdr in modules:
+        ping_direct(modAdr,True)
+
+
+    print("\nTest 2. ping-command, echo, using net_dialog()")
+    for modAdr in modules:
+        ping(modAdr,True)
+
+
+    print("\nTest 3. read status, using net_dialog()")
+    for modAdr in modules:
         #for modAdr in [1,]:
-        print("Modul : ",modAdr)
+        #print("Modul : ",modAdr)
         #for reg in [1,2,3]:
-        for reg in [1]:
-            print("  regulator: ",reg)
-            txCmd = modbus_wrap( modAdr, 0x02, reg,"" ) # staus part 1
-            err,repeat,rxCmd=net_dialog(txCmd)
-            print("    cmd2; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
-
-            txCmd = modbus_wrap( modAdr, 0x04, reg,"" ) # staus part 2
-            err,repeat,rxCmd=net_dialog(txCmd)
-            print("    cmd4; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
-            #time.sleep(0.2)
-            print(rst)
+        for regNr in [1]:
+            print("Module %d - Regler %d: "%(modAdr,regNr))
+            get_status(modAdr,regNr,True)

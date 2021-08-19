@@ -9,11 +9,12 @@ import time
 import configparser
 #
 from pl1_hr23_variables import *
+import vorlaut as vor
 import pl1_hr23_parse_answer as par
 import pl1_usb_ser_c as us
 import pl1_modbus_c as mb
 
-##
+
 
 
 '''
@@ -87,7 +88,19 @@ def show_mod_status(modules,regulators,mode=0):
                 #print(" %2d   %1d % 6.1f % 6.1f % 6.1f % 6.1f   %3d"%\
                 #        (modAdr,reg,rst["VM"],rst["VE"],rst["RM"],rst["RE"],rst["PM"],)) 
 
+def send_ping_(modules,mode):
+    print(60*"=")
+    print("PING-Test ueber alle Module")
+    print(60*"-")
+    cnt=0
+    for modAdr in modules:
+        err,repeat,rxCmd = us.ping(modAdr,False)
+        cnt+=1
+        print("M%02d:% 2dx%d=%s; "%(modAdr,err,repeat,rxCmd), end="; ")
+        if cnt%5 == 0:
+            print()
 
+    pass
 
 '''
 ***************************************************
@@ -115,6 +128,7 @@ def menu(mpos):
         print("3  setze Modul Auswahl",modSel)
         print("4  setze Regler Auswahl",regSel)
         print("5  Sende Vorlauftemperatur von Modul 30 an alle anderen")
+        print("6  sende PING Signal an alle Module")
         wahl=int(input("wahl="))
     return wahl
 
@@ -206,7 +220,7 @@ def inbetriebnahme():
     busy=True
     while busy:
         # *** forever until restart / watchdog (if implemented)
-        wahl=menu([0,1,2,3,4,5])
+        wahl=menu([0,1,2,3,4,5,6])
         if wahl==1: # show selected modules
             show_mod_status(modSel,regSel,1)               
         if wahl==2: # show all modules
@@ -217,6 +231,8 @@ def inbetriebnahme():
             mod_list_interactive(regSel,[1,2,3])
         if wahl==5: # send VL temp to modules
             send_temp_vorlauf(modSendTvor,30)   # from module 30
+        if wahl==6: # send ping to all modules
+            send_ping_(modules,1)
 
         if wahl==0:
             # stop loop

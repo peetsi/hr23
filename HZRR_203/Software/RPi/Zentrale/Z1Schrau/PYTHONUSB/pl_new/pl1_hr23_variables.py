@@ -428,7 +428,6 @@ def param_list(modNr):
     ''' @brief  list parameters of one module
         @param  modNr   module number to be listed
     '''
-
     p = pars[modNr]
     for label in p:
         if label != "r":
@@ -465,22 +464,22 @@ def platform_check():
         sys.exit(1)
 
 
+def prog_header_var():
+    print()
+    cmdLine=sys.argv
+    progPathName = sys.argv[0]
+    progFileName = progPathName.split("/")[-1]
+    print(60*"=")
+    print("ZENTRALE: %s"%(progFileName))
+    print(60*"-")
+
+
+
+
 
 if __name__ == "__main__":
 
-    def prog_header_var():
-        print()
-        cmdLine=sys.argv
-        progPathName = sys.argv[0]
-        progFileName = progPathName.split("/")[-1]
-        print(60*"=")
-        print("ZENTRALE: %s"%(progFileName))
-        print(60*"-")
-
-
-
-
-    #prog_header_var()   # test ok
+    prog_header_var()    # test ok; always uncommented!!!
     #platform_check()    # test ok
     #parameters_zero()   # test ok
     #param_list(1)       # test ok

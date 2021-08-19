@@ -129,20 +129,30 @@ def save_next_log(fLog):
            (str(modReg),modAdr,modIdx,str(regs)))
         for regNr in regs:
             regIdx=regNr-1
-            x = us.read_stat(modAdr,regIdx)
+            err, x = us.get_status(modAdr,regIdx,True)
             # *** generate logfile data-set for one module / regulator
-            '''
-            20210317_033815 0201 HK0 :0002021b t0.0 0 VM  0.0 RM  0.0 VE  0.0 RE  0.0 RS  0.0 P000 E0000 FX0 M0 A0
-            20210317_033815 0202 HK0 :(False,)
-            20210317_033816 0203 HK0 :0002023b t0.0 0 VM  0.0 RM  0.0 VE  0.0 RE  0.0 RS  0.0 P000 E0000 FX0 M0 A0
-            20210317_033816 1E01 HK0 :00021E1b t0.0 0 VM  0.0 RM  0.0 VE  0.0 RE  0.0 RS  0.0 P000 E0000 FX0 M0 A0
-            20210317_033817 1E02 HK0 :00021E1b t0.0 0 VM  0.0 RM  0.0 VE  0.0 RE  0.0 RS  0.0 P000 E0000 FX0 M0 A0
-            '''
-            #20191016_075934 0901 HK2 :0002091a t4260709.0  S VM 46.0 RM 42.5 VE 20.0 RE 42.5 RS 32.2 P074 E0000 FX0 M2503 A135
-            logstr = time.strftime('%Y%m%d_%H%M%S ')
-
+            # of form e.g.:
+            # 20210317_033815 0202 HK0 :(False,)
+            # 20191016_075934 0901 HK2 :0002091a t4260709.0  S VM 46.0 RM 42.5 VE 20.0 RE 42.5 RS 32.2 P074 E0000 FX0 M2503 A135
             heizkreis = int( hk[si["hostname"]]["heizkreis"])
-            logstr+= "%02X%02X "%(modAdr,regNr) + "HK%d "%(heizkreis) + ":" + str(x)
+            s0  = time.strftime('%Y%m%d_%H%M%S ')
+            s0 += "%02X%02X HK%d :"%(modAdr,regNr,heizkreis)
+            if err:
+                statStr = s0 + str(x)       # head + error string
+            else:
+                cmdHead  = "0002%02X%d%s "%(int(modAdr),int(regNr),PROT_REV)
+                tic      = float(rst["tic2"]) / 1000.0
+                ticStr   = "t%.1f "%(tic)
+                # status data:
+                s1 = "VM%5.1f RM%5.1f VE%5.1f RE%5.1f "%\
+                    (rst["VM"],rst["RM"],rst["VE"],rst["RE"])
+                s2 = "RS%5.1f P%03.0f "%\
+                    (rst["RS"],rst["PM"])
+                s3 = "E%04X FX%.0f M%.0f A%d"%\
+                    (rst["ER"],rst["FX"],rst["MT"],rst["NL"],)
+                statStr = s0 + cmdHead + ticStr + rst["SN"] + " " + s1 + s2 +s3
+            fLog.write(statStr+"\r\n")
+            vl(3,statStr)
 
 
         
@@ -186,7 +196,7 @@ def log():
     endLoop=False
     while(True):
         # *** lies Status aller Module ein und speichere ihn in log-Dateien
-        if time.time() >= tEndFile :
+        if (fLog==None) or (time.time() >= tEndFile) :
             # calculate end-time of current log-file
             # NOTE DO NOT USE eval() - it is unsecure !!!
             xl=co["system"]["logFileTime"].split("*")
