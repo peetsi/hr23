@@ -268,20 +268,24 @@ def net_dialog(txCmd):
         if err:
             repeat+=1
         elif len(rxCmd) > 7:
-            rxAdr   = int(rxCmd[5:7],16)    # address from sender module
-            rxCmdNr = int(rxCmd[3:5],16)
-            if rxCmdNr != txCmdNr:
-                repeat+=1
-            elif rxAdr != txAdr:
+            try:
+                rxAdr   = int(rxCmd[5:7],16)    # address from sender module
+                rxCmdNr = int(rxCmd[3:5],16)
+            except Exception as e:
                 repeat+=1
             else:
-                err,parse = par.parse_answer(rxCmd)
-                if err:
-                    repeat += 1
+                if rxCmdNr != txCmdNr:
+                    repeat+=1
+                elif rxAdr != txAdr:
+                    repeat+=1
                 else:
-                    # properly parsed answer
-                    parse=parse.strip().strip(",")
-                    break
+                    err,parse = par.parse_answer(rxCmd)
+                    if err:
+                        repeat += 1
+                    else:
+                        # properly parsed answer
+                        parse=parse.strip().strip(",")
+                        break
         else:
             # too short
             repeat+=1
@@ -300,14 +304,14 @@ def net_dialog(txCmd):
 def ping_direct(modAdr,verbose):
     ''' ping directly using tx- and rx-functions '''
     txCmd = modbus_wrap( modAdr, 0x01, 0,"" )  # ping
-    if verbose:
-        vl(1,"    test1: txCmd=%s"%(txCmd.strip()))
+    #if verbose:
+    #    vl(1,"    test1: txCmd=%s"%(txCmd.strip()))
     ser_reset_buffer()
     tx_command(txCmd)
     err,rxCmd = rx_command()
     if verbose:
-        vl(1,"    test1: err=%d; rxCmd=%s"%(err,rxCmd))
-    return err, rxCmd
+        vl(1,"    modAdr=%d: ping err=%d; rxCmd=%s"%(modAdr,err,rxCmd))
+    return err, 0, rxCmd  # no repeat possibls
 
 
 def ping(modAdr,verbose):
@@ -320,42 +324,51 @@ def ping(modAdr,verbose):
     return err,repeat,rxCmd
 
 
-def read_stat(modAdr,subAdr):
-    ''' read all status values from module/regulator using command 2 and 4'''
-    ''' modAdr e {1,...,30}, subAdr e {0,1,2,3} <=> {mod,reg1,reg2,reg3}  '''
-    # read status part 1
-    vl(3,"modAdr=%d; subAdr=%d"%(modAdr,subAdr))
-    txCmd = mb.modbus_wrap( modAdr, 0x02, subAdr,"" ) # staus part 1
-    err,repeat,rxCmd=us.net_dialog(txCmd)
-    time.sleep(0.1)
-    # read status part 2
-    txCmd = mb.modbus_wrap( modAdr, 0x04, subAdr,"" ) # staus part 2
-    err,repeat,rxCmd=us.net_dialog(txCmd)
-    time.sleep(0.1)
-
-
 def get_status(modAdr,regNr,verbose=False):
     ''' read status from module modAdr/regNr; verbose'''
     txCmd = modbus_wrap( modAdr, 0x02, regNr,"" ) # staus part 1
     err,repeat,rxCmd=net_dialog(txCmd)
     if err:
-        return -1,"err reading part1 of status"
+        return -1,repeat,"err reading part1 of status"
     if verbose:
         print("    cmd2; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
 
     txCmd = modbus_wrap( modAdr, 0x04, regNr,"" ) # staus part 2
     err,repeat,rxCmd=net_dialog(txCmd)
     if err:
-        return -2,"err reading part2 of status"
+        return -2,repeat,"err reading part2 of status"
     if verbose:
         print("    cmd4; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
     #time.sleep(0.2)
     if verbose:
         print("    ",rst)
-    return err,rst
+    get_jumpers(modAdr)
+    return err,repeat,""
 
 
+def get_jumpers(modAdr,verbose=False):
+    ''' read jumper settings on module hardware'''
+    txCmd = modbus_wrap( modAdr, 0x41, 0,"" ) # jumper settings
+    err,repeat,rxCmd=net_dialog(txCmd)
+    # NOTE stat["jumpers"] is set in net_dialog if err==0
+    if err:
+        rxCmd="err reading jumper settings"
+        stat["jumpers"] = 0x100     # overrange; max is 0xFF
+    if verbose:
+        vl(2,"%03Xx"%(stat["jumpers"]))
+    return err,repeat,rxCmd
 
+def get_revision(modAdr,verbose=False):
+    ''' read revision number of module firmware'''
+    txCmd = modbus_wrap( modAdr, 0x9, 0,"" ) # revision number of firmware
+    err,repeat,rxCmd=net_dialog(txCmd)
+    # NOTE stat["revision"] is set in net_dialog if err==0
+    if err:
+        rxCmd="err reading revision"
+        stat["revision"] = "err reading firmware revision"     # overrange; max is 0xFF
+    if verbose:
+        vl(2,stat["revision"])
+    return err,repeat,rxCmd
 
 
 
@@ -395,36 +408,82 @@ if __name__ == "__main__":
 
     sp_init()           # set serial port parameters from .ini file
 
+    TEST_OSZI           = 0x01
+    TEST_PING_DIRECT    = 0x02
+    TEST_PING           = 0x04
+    TEST_STATUS         = 0x08
+    TEST_JUMPERS        = 0x10
+    TEST_VERSION        = 0x20
+
+    test = TEST_PING + TEST_STATUS + TEST_JUMPERS + TEST_VERSION
+    #test = TEST_JUMPERS + TEST_VERSION
     
-    # Serial test - send a command for check with oszilloscope
-    osziTest=0
-    if osziTest:
-        modAdr=2
-        txCmd = modbus_wrap( modAdr, 0x01, 0,"" ) # ping
-        while(True):
-            tx_command(txCmd)
-            time.sleep(0.5)
-    
+    testRepeat = 10000
+    testDelay  = 0.0
+
     modules=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]
     modules=[1,2,3,30]
     modules=[1,2,30]
+    errSum=0
+    repSum =0
+    cnt=0
+    while testRepeat - cnt:
+        cnt +=1
+        print("----- TESTN NR.: %d ------ errors=%d; repeats=%d"%(cnt,errSum,repSum
+        ))
 
-    # test dialog with modules
-    print("\nTest 1. ping-command, echo, directly using txrx_command()")
-    for modAdr in modules:
-        ping_direct(modAdr,True)
+        if test & TEST_OSZI:
+            # Serial test - send a command for check with oszilloscope
+            modAdr=2
+            txCmd = modbus_wrap( modAdr, 0x01, 0,"" ) # ping
+            while(True):
+                tx_command(txCmd)
+                time.sleep(testDelay)
+        
 
+        # test dialog with modules
+        if test & TEST_PING_DIRECT:
+            print("Test 1. ping-command, echo, directly using txrx_command()")
+            for modAdr in modules:
+                err,rep,pyld=ping_direct(modAdr,True)
+                errSum += err
+                repSum += rep
 
-    print("\nTest 2. ping-command, echo, using net_dialog()")
-    for modAdr in modules:
-        ping(modAdr,True)
+        if test & TEST_PING:
+            print("Test 2. ping-command, echo, using net_dialog()")
+            for modAdr in modules:
+                err,rep,pyld=ping(modAdr,True)
+                errSum += err
+                repSum += rep
 
+        if test & TEST_STATUS:
+            print("Test 3. read status, using net_dialog()")
+            for modAdr in modules:
+                #for modAdr in [1,]:
+                #print("Modul : ",modAdr)
+                #for reg in [1,2,3]:
+                for regNr in [1]:
+                    print("Module %d - Regler %d: "%(modAdr,regNr))
+                    err,rep,pyld=get_status(modAdr,regNr,True)
+                    errSum += err
+                    repSum += rep
 
-    print("\nTest 3. read status, using net_dialog()")
-    for modAdr in modules:
-        #for modAdr in [1,]:
-        #print("Modul : ",modAdr)
-        #for reg in [1,2,3]:
-        for regNr in [1]:
-            print("Module %d - Regler %d: "%(modAdr,regNr))
-            get_status(modAdr,regNr,True)
+        if test & TEST_JUMPERS:
+            print("Test 4. read jumpers, using net_dialog()")
+            for modAdr in modules:
+                err,rep,pyld=get_jumpers(modAdr,True)
+                errSum += err
+                repSum += rep
+
+        if test & TEST_VERSION:
+            print("Test 5. read firmware revision, using net_dialog()")
+            for modAdr in modules:
+                vl(2,"modAdr=%d: "%(modAdr),newline=False)
+                err,rep,pyld=get_revision(modAdr,True)
+                errSum += err
+                repSum += rep
+
+        time.sleep(testDelay)
+
+    print("tests performed: %d; errors:%d repeats:%d"%(testRepeat,errSum,repSum
+    ))

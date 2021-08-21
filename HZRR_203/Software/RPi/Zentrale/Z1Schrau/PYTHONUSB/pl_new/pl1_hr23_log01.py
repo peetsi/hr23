@@ -29,10 +29,10 @@ import pl1_modbus_c as mb
 
 '''
 ***************************************************
-diverse Funktionen
+global variables and other items
 ***************************************************
 '''
-
+fLog = None
 
 '''
 ***************************************************
@@ -43,23 +43,25 @@ diverse Funktionen
 def get_mod_regs():
     ''' read all modules and active regulators from .ini file'''
     ''' @return modreg     [ 1,[1,2], 2,[3], ...]; active modules and regulators'''
+    ''' NOTE there are more options to define active regulagtors:'''
+    '''      "regActive" and the dominant "regActFlags" '''
     global modules
     # *** get active modules from .ini file
 
     mods        = hk[si["hostname"]]["modules"]   # ',' separated string with all module numbers
     modules     = [int(i) for i in mods.split(",")] # all active modules as integer list
     # *** get active regulators for each module
-    #config.has_option(section, option)
 
     if hk.has_option(si["hostname"],"regActFlags") :
-        # !!! preferred key
         # evaluate active regulator flags from "regActFlags" key in .ini file
+        # !!! preferred key
+        # each bit selects activity of a regulator 0b0000 selects none, 0b0001 reg1, 0b0111 all
         # used from revision 2.3;if available
         mractfl     = hk[si["hostname"]]["regActFlags"]
         regActFlags = [int(i) for i in mractfl.split(",")]# active regulator count for each module
         if len(regActFlags) != len(modules):
             err=1
-            vl(3,"'regActFlags' and module count different")
+            vl(3,"'regActFlags' and module have different length")
             return []
         regSel=[]
         for x in regActFlags:
@@ -78,20 +80,21 @@ def get_mod_regs():
         regActive   = [int(i) for i in mract.split(",")]# active regulator count for each module
         if len(regActive) != len(modules):
             err=2
-            vl(3,"'regActive' and module count different")
+            vl(3,"'regActive' and module have different length")
             return[]
         act2list=[[1],[1,2],[1,2,3]] # <=> [1,2,3]
         regSel = [ act2list[regActive[i]-1] for i in range(len(regActive)) ]
     else:
-        regSel=[[] for i in regActFlags]
-    modRegs=list(zip(modules,regSel))
-    return modRegs    
+        regSel=[[] for i in modules]
+    modRegsActive=list(zip(modules,regSel))
+    return modRegsActive    
 
 
 
 
-def make_new_logfile(fLog):
+def make_new_logfile():
     ''' close current log-file if existent and open a new one '''
+    global fLog
     # close current file if it exists
     if (fLog!=None) and (fLog.closed == False):
         fLog.close()
@@ -117,28 +120,29 @@ def make_new_logfile(fLog):
     fLog.write(time.strftime('# new log start: %Y%m%d-%H%M%S\n'))
 
 
-def save_next_log(fLog):
+def save_next_log():
     ''' read status data from every module with all regulators and save them to logfile'''
+    global fLog
     modRegs=get_mod_regs()
-    print("modRegs=",modRegs)
+    vl(3,"modRegs=",modRegs)
+    heizkreis = int( hk[si["hostname"]]["heizkreis"])
     for modReg in modRegs:
         modAdr=modReg[0]
-        modIdx=modules.index(modAdr)
+        modIdx=modules.index(modAdr)    # index in modules-list <=> in modReg-list
         regs=modReg[1]     # active regulators in module
         vl(3,"modReg=%s; modAdr=%d; modIdx=%d; regs=%s"%\
            (str(modReg),modAdr,modIdx,str(regs)))
         for regNr in regs:
             regIdx=regNr-1
-            err, x = us.get_status(modAdr,regIdx,True)
+            err, rep, message = us.get_status(modAdr,regIdx,True)
             # *** generate logfile data-set for one module / regulator
             # of form e.g.:
             # 20210317_033815 0202 HK0 :(False,)
             # 20191016_075934 0901 HK2 :0002091a t4260709.0  S VM 46.0 RM 42.5 VE 20.0 RE 42.5 RS 32.2 P074 E0000 FX0 M2503 A135
-            heizkreis = int( hk[si["hostname"]]["heizkreis"])
             s0  = time.strftime('%Y%m%d_%H%M%S ')
             s0 += "%02X%02X HK%d :"%(modAdr,regNr,heizkreis)
             if err:
-                statStr = s0 + str(x)       # head + error string
+                statStr = s0 + str(message)       # head + error string
             else:
                 cmdHead  = "0002%02X%d%s "%(int(modAdr),int(regNr),PROT_REV)
                 tic      = float(rst["tic2"]) / 1000.0
@@ -152,6 +156,7 @@ def save_next_log(fLog):
                     (rst["ER"],rst["FX"],rst["MT"],rst["NL"],)
                 statStr = s0 + cmdHead + ticStr + rst["SN"] + " " + s1 + s2 +s3
             fLog.write(statStr+"\r\n")
+            fLog.flush()
             vl(3,statStr)
 
 
@@ -186,13 +191,12 @@ def send_next_vlt():
 '''
 def log():
     ''' main-loop for permanent work as Zentrale '''
-    global co, hk
+    global co, hk, fLog
     hr_init()
     
     tEndFile = time.time()  # endtime when log-file will be closed
     tEndLog  = time.time()  # endtime interval when next log will be performed
     tEndVLT  = time.time()  # endtime interval when next vorlauf temperature is sent
-    fLog=None
     endLoop=False
     while(True):
         # *** lies Status aller Module ein und speichere ihn in log-Dateien
@@ -205,15 +209,13 @@ def log():
                 dt *= float(pdt)
             tEndFile = time.time() + dt
             vl(3,"increase end of logfile by %.3f sec to %.3fsec"%(dt,tEndFile))
-            make_new_logfile(fLog)
+            make_new_logfile()
 
         # *** lies Status aller Module ein und speichere ihn in log-Dateien
         if time.time() > tEndLog :
             tEndLog = time.time() + float(co["system"]["logTime"])
-            save_next_log(fLog)
+            save_next_log()
 
-            # TODO DEBUG remove:
-            break
 
 
         # *** sende zentrale Vorlauftemperatur an alle anderen Module
@@ -222,6 +224,7 @@ def log():
             send_next_vlt()
         
         # *** end of infinite loop
+        endLoop= True  # FOR DEBUG TODO remove
         if endLoop:
             fLog.close()
             break

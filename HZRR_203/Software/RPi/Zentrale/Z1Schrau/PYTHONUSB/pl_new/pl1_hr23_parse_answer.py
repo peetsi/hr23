@@ -14,7 +14,7 @@ def parStr2list(pyld):
     ''' split ',' separated values from st.rxCmd in list '''
     if (pyld == ""):
         return 1,[]
-    pl = pyld.rxCmd.split(",")
+    pl = pyld.split(",")
     while pl[0] == '' :      # discard leading empty strings
         pl.pop(0)
     while pl[-1] == '' :     # discard trailing empty strings
@@ -264,32 +264,29 @@ def parse_answer(rxCmdStr):
             return 0,pyld
 
     elif rxCmdNr == 9:   # revision numbers of module 
+        stat["revision"] = pyld
         return 0,pyld    # TODO: check, separate data, add to _variables.py
 
-
     elif rxCmdNr == 0x20 :  # Zentrale Vorlauftemperatur received
-        #dbg.m("parse_answer %02x: pyld = %s"%(rxCmdNr,rxCmd))
+        if "ACK" in pyld :
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
+
+    elif rxCmdNr == 0x22 :  # setze parameter1
+        if "ACK" in pyld :
+            return 0,pyld
+        elif "NAK" in pyld:
+            return -1,pyld
+
+    elif rxCmdNr == 0x23 :  # setze parameter2
         if "ACK" in pyld :
             return 0,pyld
         elif "NAK" in pyld:
             return -1,pyld
 
 
-
-    elif rxCmdNr == 0x22 :  # setze parameter
-        if "ACK" in pyld :
-            return 0,pyld
-        elif "NAK" in pyld:
-            return -1,pyld
-
-    elif rxCmdNr == 0x23 :  # setze parameter
-        if "ACK" in pyld :
-            return 0,pyld
-        elif "NAK" in pyld:
-            return -1,pyld
-
-
-    elif rxCmdNr == 0x24 :  # setze parameter
+    elif rxCmdNr == 0x24 :  # setze parameter3
         if "ACK" in pyld :
             return 0,pyld
         elif "NAK" in pyld:
@@ -401,7 +398,7 @@ def parse_answer(rxCmdStr):
         err,pl=parStr2list(pyld)
         if err:
             return -1,pyld
-        jumpers = int(l[0], 16)
+        jumpers = int(pl[0], 16)
         stat["jumpers"] = jumpers
         return 0,pyld
 

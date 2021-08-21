@@ -221,6 +221,7 @@ stat = {
     "MotConn"   :  0,   # 1     motor connected -> 1
     "MotImA"    :  0,   # mA;   last measured motor current 
     "jumpers"   :  0,   # 1     jumper settings
+    "revision"  : "",   # str   revision number of firmware
     "r" : [ rst for i in range(3) ], # status of 3 built-in regulators
 }
 
