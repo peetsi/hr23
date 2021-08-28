@@ -54,8 +54,8 @@ def sp_init():
         }
     except Exception as e:
         err=1
-        print("error reading/assigning configuration from %s: "%(configFile),end="")
-        print(e)
+        vl(3,"error reading/assigning configuration from %s: "%(configFile),False)
+        vl(3,e)
     return err
 
 
@@ -144,7 +144,7 @@ def connect_rs485():
     err=ser_check()
     if not err:
         ser.close()
-        print("RS485 Network connection closed")
+        vl(5,"RS485 Network connection closed")
 
 
 
@@ -331,17 +331,16 @@ def get_status(modAdr,regNr,verbose=False):
     if err:
         return -1,repeat,"err reading part1 of status"
     if verbose:
-        print("    cmd2; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
-
+        vl(3,"    cmd2; err=%d; repeat=%d; rxCmd=%s"%(err,repeat,rxCmd))
     txCmd = modbus_wrap( modAdr, 0x04, regNr,"" ) # staus part 2
     err,repeat,rxCmd=net_dialog(txCmd)
     if err:
         return -2,repeat,"err reading part2 of status"
     if verbose:
-        print("    cmd4; err=",err,"; repeat=",repeat,"; rxCmd=",rxCmd)
+        vl(3,"    cmd4; err=%d; repeat=%d; rxCmd=%s"%(err,repeat,rxCmd))
     #time.sleep(0.2)
     if verbose:
-        print("    ",rst)
+        vl(3,"    "+str(rst))
     get_jumpers(modAdr)
     return err,repeat,""
 
@@ -370,7 +369,29 @@ def get_revision(modAdr,verbose=False):
         vl(2,stat["revision"])
     return err,repeat,rxCmd
 
+def send_temp_vorlauf( vlmodules, modZentrale ):
+    ''' @brief  send Vorlauftemperature to modules'''
+    us.ser_check()
+    # 1. read VL temperature from Zentrale module
+    txCmd = mb.modbus_wrap(modZentrale, 0x02, 1, "" ) # request status part 1
+    err,repeat,rxCmd=us.net_dialog(txCmd)
+    if not err:
+        vlt = rst["VM"]
+        print("setze Vorlauftemperatur von Zentrale: %5.1fdegC:"%(vlt))
+        for mod in vlmodules:
+            print(" %2d"%(mod),end="")
+            txCmd = mb.modbus_wrap(mod,0x20,0,",%.1f,"%(vlt))
+            #print(" txCmd=",txCmd)
 
+            err,repeat,rxCmd=us.net_dialog(txCmd)
+            if err:
+                #print(e,end="")
+                print(":",end="")
+            else:
+                print(".",end="")
+            #print("rxCmd=",rxCmd)
+        vl(2,"send vlt fertig")
+    return err, repeat, rxCmd
 
 
 
@@ -478,7 +499,7 @@ if __name__ == "__main__":
         if test & TEST_VERSION:
             print("Test 5. read firmware revision, using net_dialog()")
             for modAdr in modules:
-                vl(2,"modAdr=%d: "%(modAdr),newline=False)
+                vl(2,"modAdr=%d: "%(modAdr),nl=False)
                 err,rep,pyld=get_revision(modAdr,True)
                 errSum += err
                 repSum += rep

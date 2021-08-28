@@ -13,6 +13,7 @@ import vorlaut as vor
 import pl1_hr23_parse_answer as par
 import pl1_usb_ser_c as us
 import pl1_modbus_c as mb
+import pl1_hr23_log01 as log
 
 
 
@@ -31,27 +32,6 @@ hr23 Funktionen
 ***************************************************
 '''
 
-def send_temp_vorlauf( vlmodules, modZentrale ):
-    ''' @brief  send Vorlauftemperature to modules'''
-    us.ser_check()
-    # 1. read VL temperature from Zentrale module
-    txCmd = mb.modbus_wrap(modZentrale, 0x02, 1, "" ) # request status part 1
-    err,repeat,rxCmd=us.net_dialog(txCmd)
-    vlt = rst["VM"]
-    print("setze Vorlauftemperatur von Zentrale: %5.1fdegC:"%(vlt))
-    for mod in vlmodules:
-        print(" %2d"%(mod),end="")
-        txCmd = mb.modbus_wrap(mod,0x20,0,",%.1f,"%(vlt))
-        #print(" txCmd=",txCmd)
-
-        err,repeat,rxCmd=us.net_dialog(txCmd)
-        if err:
-            #print(e,end="")
-            print(":",end="")
-        else:
-            print(".",end="")
-        #print("rxCmd=",rxCmd)
-    print("fertig")
 
 
 def show_mod_status(modules,regulators,mode=0):
@@ -230,7 +210,7 @@ def inbetriebnahme():
         if wahl==4: # select regulators
             mod_list_interactive(regSel,[1,2,3])
         if wahl==5: # send VL temp to modules
-            send_temp_vorlauf(modSendTvor,30)   # from module 30
+            us.send_temp_vorlauf(modSendTvor,30)   # from module 30
         if wahl==6: # send ping to all modules
             send_ping_(modules,1)
 
@@ -247,7 +227,7 @@ NORMALE FUKTION - infinite loop
 
 def hr_main():
     ''' main-loop for permanent work as Zentrale '''
-    log()
+    log.log()
 
 
 
@@ -276,7 +256,7 @@ if __name__ == "__main__":
     #modules= [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,30]
     # modules=[1,]
     #regulators = [1]
-    #send_temp_vorlauf([1,2,3,4,5,6,7,8,9],30)
+    #us.send_temp_vorlauf([1,2,3,4,5,6,7,8,9],30)
     #show_mod_status(modules,regulators,1)
     
 

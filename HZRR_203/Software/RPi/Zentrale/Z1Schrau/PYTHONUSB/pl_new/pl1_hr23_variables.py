@@ -95,8 +95,8 @@ def hr_init():
         confHkFile = co["system"]["confPath_local_linux"]
     # read configuration file
     ans=hk.read(confHkFile)
-    print(ans)
-    print(hk.sections())
+    vl(2,ans)
+    vl(2,str(hk.sections()))
     
 
 
